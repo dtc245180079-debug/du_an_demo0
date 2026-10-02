@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+
+{% block title %}Customer 360: {{ customer.full_name }} - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <a href="/customers" style="text-decoration: none; color: var(--text-muted);">Quay lại Danh sách khách hàng</a>
+            <span class="badge" style="background: #fef3c7; color: #92400e;">{{ customer.member_rank or 'Thành viên mới' }}</span>
+        </div>
+        <h1 class="page-title">HỒ SƠ KHÁCH HÀNG 360: {{ customer.full_name }}</h1>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        {% if customer.phone %}
+        <button class="btn btn-softphone" onclick="startSoftphoneCall('{{ customer.phone }}')">
+            Gọi Softphone Twilio
+        </button>
+        {% endif %}
+        <a href="/tickets/create?customer_id={{ customer.id }}" class="btn btn-primary">Tạo Ticket Hỗ Trợ</a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 340px 1fr; gap: 24px;">
+    <!-- Left Column: Identity & Notes -->
+    <div>
+        <!-- Profile Card -->
+        <div class="card">
+            <div class="c360-header">
+                <div class="c360-avatar">
+                    {{ customer.full_name[:1] }}
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 18px;">{{ customer.full_name }}</h2>
+                    <small style="color: var(--text-muted);">Mã KH: #{{ customer.id }}</small>
+                </div>
+            </div>
+
+            <ul class="c360-info-list">
+                <li class="c360-info-item">
+                    <span class="label">Số điện thoại:</span>
+                    <span class="val">{{ customer.phone or 'Chưa cập nhật' }}</span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Email:</span>
+                    <span class="val">{{ customer.email or 'Chưa cập nhật' }}</span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Zalo OA ID:</span>
+                    <span class="val">{{ customer.zalo_id or 'Chưa liên kết' }}</span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Facebook ID:</span>
+                    <span class="val">{{ customer.fb_id or 'Chưa liên kết' }}</span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Ngày tham gia:</span>
+                    <span class="val">{{ customer.created_at.strftime("%d/%m/%Y") if customer.created_at else '' }}</span>
+                </li>
+            </ul>
+
+            <!-- Update Notes & Rank Form -->
+            <form method="POST" action="/api/customers/{{ customer.id }}/notes">
+                <div class="form-group">
+                    <label>Hạng thành viên:</label>
+                    <select name="member_rank" class="form-control">
+                        <option value="Đồng (Mới)" {% if customer.member_rank == 'Đồng (Mới)' %}selected{% endif %}>Đồng (Mới)</option>
+                        <option value="Bạc" {% if customer.member_rank == 'Bạc' %}selected{% endif %}>Bạc</option>
+                        <option value="Vàng (VIP)" {% if customer.member_rank == 'Vàng (VIP)' %}selected{% endif %}>Vàng (VIP)</option>
+                        <option value="Kim Cương (VVIP)" {% if customer.member_rank == 'Kim Cương (VVIP)' %}selected{% endif %}>Kim Cương (VVIP)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Ghi chú nội bộ CSKH:</label>
+                    <textarea name="notes" rows="4" class="form-control" placeholder="Ghi chú sở thích, thói quen mua hàng hoặc lưu ý khi phục vụ...">{{ customer.notes or '' }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-save" style="width: 100%; justify-content: center;">
+                    Cập nhật ghi chú
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Tickets, Orders, Preferences, Warranties, Surveys -->
+    <div>
+        <!-- Consultation Preferences & Needs Card -->
+        <div class="card" style="margin-bottom: 20px; border-left: 4px solid #1a73e8;">
+            <div class="card-title">
+                <span>Nhu Cầu Tư Vấn & Thiết Bị Quan Tâm</span>
+                <a href="/consultation?customer_id={{ customer.id }}" class="btn btn-sm btn-primary">Cập nhật tư vấn mới</a>
+            </div>
+            {% if preference %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                <div>
+                    <span style="color: var(--text-muted);">Ngân sách dự kiến:</span>
+                    <strong>{{ "{:,.0f}".format(preference.budget_min or 0) }} - {{ "{:,.0f}".format(preference.budget_max or 0) }} ₫</strong>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted);">Mục đích chính:</span>
+                    <strong>{{ preference.primary_usage or 'Đang tìm hiểu' }}</strong>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted);">Thương hiệu ưa thích:</span>
+                    <span class="badge" style="background: #e0e7ff; color: #3730a3; font-weight: 700;">{{ preference.preferred_brands or 'Tất cả' }}</span>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted);">Kích thước màn hình:</span>
+                    <strong>{{ preference.desired_screen_size or 'Không bắt buộc' }}</strong>
+                </div>
+            </div>
+            {% if preference.key_criteria %}
+            <div style="margin-top: 8px; font-size: 13px;">
+                <span style="color: var(--text-muted);">Tiêu chí quan trọng:</span>
+                <strong>{{ preference.key_criteria }}</strong>
+            </div>
+            {% endif %}
+            {% if preference.agent_notes %}
+            <div style="margin-top: 8px; font-size: 13px; background: #f8fafc; padding: 8px; border-radius: 4px; color: #4b5563;">
+                <em>Ghi chú tư vấn: {{ preference.agent_notes }}</em>
+            </div>
+            {% endif %}
+            {% else %}
+            <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+                Khách hàng chưa có phiếu tư vấn nào. Bấm <strong>"Cập nhật tư vấn mới"</strong> để lưu nhu cầu.
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Electronic Warranties Card -->
+        <div class="card" style="margin-bottom: 20px; border-left: 4px solid #059669;">
+            <div class="card-title">
+                <span>Sổ Bảo Hành Điện Tử Thiết Bị ({{ warranties|length if warranties else 0 }})</span>
+                <a href="/warranties?keyword={{ customer.phone if customer.phone else '' }}" class="btn btn-sm btn-secondary">Tra cứu IMEI</a>
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã BH</th>
+                            <th>Tên máy & IMEI</th>
+                            <th>Thời hạn bảo hành</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if warranties %}
+                        {% for w in warranties %}
+                        <tr>
+                            <td><strong>{{ w.warranty_code }}</strong></td>
+                            <td>
+                                <div><strong>{{ w.product_name }}</strong></div>
+                                <div style="font-family: monospace; font-size: 11px; color: var(--text-muted);">IMEI: {{ w.imei_serial }}</div>
+                            </td>
+                            <td>
+                                <div style="font-size: 12px;">Đến: <strong>{{ w.end_date.strftime("%d/%m/%Y") }}</strong></div>
+                            </td>
+                            <td>
+                                {% if w.status == 'active' %}
+                                    <span class="badge" style="background:#e6f4ea; color:#137333;">Còn hạn</span>
+                                {% else %}
+                                    <span class="badge" style="background:#f1f3f4; color:#5f6368;">Hết hạn</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 10px;">Chưa có thiết bị nào được kích hoạt bảo hành.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quotations & Direct Sales Orders Card -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span>Báo Giá & Đơn Hàng Bán Trực Tiếp</span>
+                <a href="/quotations/create?customer_id={{ customer.id }}" class="btn btn-sm btn-primary">Lập báo giá mới</a>
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã Báo giá / Đơn</th>
+                            <th>Chi tiết</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if quotations or sales_orders %}
+                            {% for q in quotations %}
+                            <tr>
+                                <td><strong>{{ q.quote_code }}</strong> <small>(Báo giá)</small></td>
+                                <td>
+                                    <ul style="margin: 0; padding-left: 14px; font-size: 12px;">
+                                        {% for it in q['items'] %}
+                                        <li>{{ it.name }} x{{ it.qty }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td><strong style="color: var(--danger);">{{ "{:,.0f}".format(q.final_amount) }} ₫</strong></td>
+                                <td><span class="badge badge-status badge-{{ q.status }}">{{ q.status }}</span></td>
+                            </tr>
+                            {% endfor %}
+                            {% for so in sales_orders %}
+                            <tr>
+                                <td><strong><a href="/sales-orders/{{ so.id }}" style="color: var(--primary);">{{ so.order_code }}</a></strong> <small>(Đơn hàng)</small></td>
+                                <td>
+                                    <ul style="margin: 0; padding-left: 14px; font-size: 12px;">
+                                        {% for it in so['items'] %}
+                                        <li>{{ it.name }} x{{ it.qty }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td><strong style="color: var(--success);">{{ "{:,.0f}".format(so.final_amount) }} ₫</strong></td>
+                                <td><span class="badge badge-status badge-{{ so.status }}">{{ so.status }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 10px;">Chưa có báo giá hoặc đơn hàng bán điện thoại nào.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 1. Orders from KiotViet, Sapo, Lazada -->
+        <div class="card">
+            <div class="card-title">
+                <span>Đơn Hàng Đã Chuẩn Hóa (KiotViet, Sapo, Lazada)</span>
+                {% if customer.phone %}
+                <form method="POST" action="/api/customers/lookup-orders" style="margin: 0;">
+                    <input type="hidden" name="phone" value="{{ customer.phone }}">
+                    <button type="submit" class="btn btn-sm btn-secondary">Tra cứu & Đồng bộ đơn hàng mới</button>
+                </form>
+                {% endif %}
+            </div>
+
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã đơn</th>
+                            <th>Nguồn</th>
+                            <th>Sản phẩm tóm tắt</th>
+                            <th>Giá trị</th>
+                            <th>Vận đơn</th>
+                            <th>Trạng thái giao hàng</th>
+                            <th style="text-align: center;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if orders %}
+                        {% for ord in orders %}
+                        <tr>
+                            <td><strong>{{ ord.order_code }}</strong></td>
+                            <td>
+                                <span class="badge" style="background:#e0e7ff; color:#3730a3; text-transform: uppercase;">
+                                    {{ ord.source }}
+                                </span>
+                            </td>
+                            <td>{{ ord.items_summary }}</td>
+                            <td><strong style="color: var(--success);">{{ "{:,.0f}".format(ord.total_amount) }} ₫</strong></td>
+                            <td>
+                                <div><strong>{{ ord.shipping_code or '—' }}</strong></div>
+                                <small style="color: var(--text-muted);">{{ ord.shipping_carrier }}</small>
+                            </td>
+                            <td>
+                                <span class="badge" style="background:#f1f3f4; color:#333;">
+                                    {{ ord.shipping_status }}
+                                </span>
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                {% if ord.shipping_code %}
+                                <button class="btn btn-sm btn-secondary" onclick="refreshLogistics('{{ ord.shipping_code }}', '{{ ord.shipping_carrier }}')">
+                                    Làm mới GHN/GHTK
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 25px; color: var(--text-muted);">
+                                Chưa có đơn hàng nào được đồng bộ cho số điện thoại {{ customer.phone }}.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. Tickets History -->
+        <div class="card">
+            <div class="card-title">
+                <span>Lịch Sử Phiếu Hỗ Trợ (Tickets)</span>
+                <span class="badge" style="background:var(--primary-light); color:var(--primary);">{{ tickets|length }} phiếu</span>
+            </div>
+
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã Ticket</th>
+                            <th>Kênh</th>
+                            <th>Tiêu đề yêu cầu</th>
+                            <th>Ngày tạo</th>
+                            <th>Trạng thái</th>
+                            <th style="text-align: center;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if tickets %}
+                        {% for t in tickets %}
+                        <tr>
+                            <td><a href="/tickets/{{ t.id }}" style="font-weight: 700; color: var(--primary);">{{ t.ticket_code }}</a></td>
+                            <td><span class="badge badge-channel badge-{{ t.channel }}">{{ t.channel }}</span></td>
+                            <td><strong>{{ t.subject }}</strong></td>
+                            <td>{{ t.created_at.strftime("%d/%m/%Y") if t.created_at else '' }}</td>
+                            <td>
+                                <span class="badge status-{{ t.status }}">
+                                    {% if t.status == 'open' %}Mới tiếp nhận
+                                    {% elif t.status == 'in_progress' %}Đang xử lý
+                                    {% elif t.status == 'resolved' %}Đã giải quyết
+                                    {% elif t.status == 'closed' %}Đã đóng
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td style="text-align: center;">
+                                <a href="/tickets/{{ t.id }}" class="btn btn-sm btn-primary">Xem ticket</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                                Khách hàng chưa có phiếu hỗ trợ nào.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. Customer Satisfaction Surveys (CSAT / NPS) -->
+        <div class="card">
+            <div class="card-title">
+                <span>Khảo Sát Đánh Giá Dịch Vụ (CSAT & NPS)</span>
+            </div>
+            {% if surveys %}
+                {% for s in surveys %}
+                <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius-sm); padding: 12px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                        <span>CSAT: <strong>{{ s.rating_csat }}/5 sao</strong> | NPS: <strong>{{ s.score_nps }}/10</strong></span>
+                        <small style="color: var(--text-muted);">{{ s.submitted_at.strftime("%d/%m/%Y %H:%M") if s.submitted_at else '' }}</small>
+                    </div>
+                    {% if s.feedback %}
+                    <div style="font-style: italic; color: #4b5563; font-size: 13px; margin-top: 6px;">"{{ s.feedback }}"</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 13px; color: var(--text-muted);">Chưa có đánh giá nào từ khách hàng này.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    async function refreshLogistics(shippingCode, carrier) {
+        if (!shippingCode) return;
+        try {
+            const res = await fetch(`/api/logistics/refresh?code=${shippingCode}&carrier=${carrier}`);
+            const data = await res.json();
+            if (data.success) {
+                alert(`Trạng thái vận đơn [${shippingCode}]: ${data.shipping_status}`);
+                location.reload();
+            } else {
+                alert("Lỗi: " + data.message);
+            }
+        } catch (err) {
+            alert("Không thể kết nối tới cổng vận chuyển.");
+        }
+    }
+</script>
+{% endblock %}

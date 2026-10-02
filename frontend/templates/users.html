@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Người Dùng & Phân Quyền - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN (RBAC)</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Quản lý tài khoản người dùng, phân cấp quyền hạn (Khách hàng, Nhân viên, Quản trị viên) và trạng thái hoạt động
+        </p>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 60px;">ID</th>
+                <th style="width: 140px;">Tên đăng nhập</th>
+                <th>Họ và Tên</th>
+                <th>Email</th>
+                <th style="width: 130px;">Số Điện Thoại</th>
+                <th style="width: 140px;">Vai Trò Hiện Tại</th>
+                <th style="width: 120px;">Trạng Thái</th>
+                <th style="width: 200px; text-align: center;">Cập Nhật Quyền Hạn</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if users %}
+            {% for u in users %}
+            <tr>
+                <td><strong>#{{ u.id }}</strong></td>
+                <td><strong>{{ u.username }}</strong></td>
+                <td>{{ u.full_name }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.phone or '—' }}</td>
+                <td>
+                    <span class="role-pill role-{{ u.role }}">{{ u.role }}</span>
+                </td>
+                <td>
+                    {% if u.is_active %}
+                        <span class="badge" style="background:#e6f4ea; color:#137333;">Hoạt động</span>
+                    {% else %}
+                        <span class="badge" style="background:#fee2e2; color:#b91c1c;">Bị khóa</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">
+                    <form method="POST" action="/api/users/{{ u.id }}/role" style="display: flex; gap: 6px; justify-content: center;">
+                        <select name="role" style="font-size: 12px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px;">
+                            <option value="customer" {% if u.role == 'customer' %}selected{% endif %}>Customer</option>
+                            <option value="agent" {% if u.role == 'agent' %}selected{% endif %}>Agent</option>
+                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                        </select>
+                        <select name="is_active" style="font-size: 12px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px;">
+                            <option value="1" {% if u.is_active == 1 %}selected{% endif %}>Mở</option>
+                            <option value="0" {% if u.is_active == 0 %}selected{% endif %}>Khóa</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary">Lưu</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

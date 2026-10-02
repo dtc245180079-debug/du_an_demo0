@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Chi tiết Ticket {{ ticket.ticket_code }} - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+            <a href="/tickets" style="text-decoration: none; color: var(--text-muted);">Quay lại danh sách</a>
+            <span class="badge badge-channel badge-{{ ticket.channel }}">{{ ticket.channel }}</span>
+            <span class="badge priority-{{ ticket.priority }}">{{ ticket.priority|capitalize }}</span>
+        </div>
+        <h1 class="page-title" style="font-size: 22px;">{{ ticket.ticket_code }}: {{ ticket.subject }}</h1>
+    </div>
+
+    <!-- Quick Actions Header -->
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <!-- Status Selector Form -->
+        <form method="POST" action="/tickets/{{ ticket.id }}/status" style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 13px; font-weight: 600; margin: 0;">Trạng thái:</label>
+            <select name="status" class="filter-select" onchange="this.form.submit()" style="font-weight: 600;">
+                <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Mới tiếp nhận</option>
+                <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>Đang xử lý</option>
+                <option value="resolved" {% if ticket.status == 'resolved' %}selected{% endif %}>Đã giải quyết</option>
+                <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>Đã đóng</option>
+            </select>
+        </form>
+
+        <!-- Assign Agent Form -->
+        <form method="POST" action="/tickets/{{ ticket.id }}/assign" style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 13px; font-weight: 600; margin: 0;">Phân công:</label>
+            <select name="agent_id" class="filter-select" onchange="this.form.submit()">
+                <option value="">-- Chưa gán --</option>
+                {% for a in agents %}
+                <option value="{{ a.id }}" {% if ticket.assigned_agent_id == a.id %}selected{% endif %}>
+                    {{ a.full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<div class="ticket-layout">
+    <!-- Left: Conversation Stream & Smart Reply -->
+    <div>
+        <!-- Smart AI Assistant Box -->
+        <div class="smart-ai-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                    Trợ Lý CSKH AI (Smart Suggestions)
+                </strong>
+                <small style="color: var(--text-muted);">Dựa trên RAG Knowledge Base</small>
+            </div>
+            <p style="font-size: 13px; margin: 0 0 10px 0; color: #374151;">
+                Bấm vào câu trả lời gợi ý bên dưới để đưa nhanh vào khung soạn thảo:
+            </p>
+            <div id="smart-replies-list">
+                {% if smart_replies %}
+                    {% for reply in smart_replies %}
+                    <span class="smart-reply-chip" data-reply="{{ reply }}" onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
+                        {{ reply }}
+                    </span>
+                    {% endfor %}
+                {% else %}
+                    <span class="smart-reply-chip" data-reply="Dạ em chào anh/chị, em đã tiếp nhận yêu cầu và đang kiểm tra thông tin ngay ạ!" onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
+                        Em đã tiếp nhận và đang xử lý
+                    </span>
+                    <span class="smart-reply-chip" data-reply="Dạ trường hợp này anh/chị vui lòng mang máy qua chi nhánh gần nhất để kỹ thuật viên kiểm tra trực tiếp ạ." onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
+                        Hướng dẫn mang máy qua chi nhánh
+                    </span>
+                    <span class="smart-reply-chip" data-reply="Dạ anh/chị vui lòng cung cấp số điện thoại hoặc mã đơn hàng để em tra cứu ạ." onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
+                        Yêu cầu mã đơn hàng / SĐT
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Chat Feed Box -->
+        <div class="feed-container">
+            <div class="feed-header">
+                <div>
+                    <strong>Lịch Sử Trao Đổi</strong>
+                    <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">({{ messages|length }} tin nhắn)</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted);">
+                    Kênh phản hồi: <strong style="text-transform: uppercase;">{{ ticket.channel }}</strong>
+                </div>
+            </div>
+
+            <div class="feed-messages" id="ticket-feed-messages">
+                {% for msg in messages %}
+                <div class="feed-msg msg-{{ msg.sender_type }}">
+                    <div class="msg-meta">
+                        <strong>{{ msg.sender_name }}</strong>
+                        <span>{{ msg.created_at.strftime("%H:%M %d/%m") if msg.created_at else '' }}</span>
+                    </div>
+                    <div style="white-space: pre-wrap;">{{ msg.message }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Reply Box -->
+            <div style="padding: 16px; border-top: 1px solid var(--border-color); background: white;">
+                <form method="POST" action="/tickets/{{ ticket.id }}/message">
+                    <div style="display: flex; gap: 10px;">
+                        <textarea id="reply-text" name="message" rows="3" class="form-control" placeholder="Nhập câu trả lời gửi tới khách hàng qua kênh {{ ticket.channel }}..." required></textarea>
+                        <div style="display: flex; flex-direction: column; justify-content: flex-end; gap: 6px;">
+                            <button type="submit" class="btn btn-primary" style="height: 100%;">
+                                Gửi
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Customer 360 & Context Panel -->
+    <div>
+        <!-- Customer 360 Card -->
+        <div class="card">
+            <div class="card-title">
+                <span>Customer 360</span>
+                {% if customer %}
+                <a href="/customers/{{ customer.id }}" style="font-size: 12px; color: var(--primary); text-decoration: none;">Xem chi tiết</a>
+                {% endif %}
+            </div>
+
+            {% if customer %}
+            <div class="c360-header">
+                <div class="c360-avatar">
+                    {{ customer.full_name[:1] }}
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16px;">{{ customer.full_name }}</h3>
+                    <span class="badge" style="background: #fef3c7; color: #92400e; margin-top: 4px;">
+                        {{ customer.member_rank or 'Thành viên' }}
+                    </span>
+                </div>
+            </div>
+
+            <ul class="c360-info-list">
+                <li class="c360-info-item">
+                    <span class="label">Số điện thoại:</span>
+                    <span class="val">
+                        {{ customer.phone or ticket.customer_phone or 'Chưa có' }}
+                        {% if customer.phone or ticket.customer_phone %}
+                        <button class="btn btn-sm btn-softphone" style="padding: 2px 6px; font-size: 11px; margin-left: 6px;"
+                                onclick="startSoftphoneCall('{{ customer.phone or ticket.customer_phone }}')">
+                            Gọi
+                        </button>
+                        {% endif %}
+                    </span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Email:</span>
+                    <span class="val">{{ customer.email or ticket.customer_email or 'Chưa có' }}</span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Zalo ID:</span>
+                    <span class="val">{{ customer.zalo_id or 'Chưa liên kết' }}</span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Facebook:</span>
+                    <span class="val">{{ customer.fb_id or 'Chưa liên kết' }}</span>
+                </li>
+                <li class="c360-info-item">
+                    <span class="label">Ghi chú KH:</span>
+                    <span class="val" style="font-style: italic; color: #4b5563;">{{ customer.notes or 'Chưa có ghi chú' }}</span>
+                </li>
+            </ul>
+            {% else %}
+            <p style="color: var(--text-muted); font-size: 13px;">Chưa liên kết hồ sơ khách hàng.</p>
+            {% endif %}
+
+            <!-- Related Orders from KiotViet / Sapo / Lazada -->
+            <div style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <strong style="font-size: 13px;">Đơn hàng liên quan ({{ orders|length }})</strong>
+                    {% if ticket.customer_phone %}
+                    <form method="POST" action="/api/customers/lookup-orders" style="margin: 0;">
+                        <input type="hidden" name="phone" value="{{ ticket.customer_phone }}">
+                        <button type="submit" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 2px 6px;">Tra cứu lại</button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                {% if orders %}
+                    {% for ord in orders[:3] %}
+                    <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 8px; font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                            <span>{{ ord.order_code }}</span>
+                            <span class="badge" style="font-size: 10px; background: #e0e7ff; color: #3730a3; text-transform: uppercase;">{{ ord.source }}</span>
+                        </div>
+                        <div style="color: var(--text-muted); margin: 3px 0;">{{ ord.items_summary }}</div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                            <span style="color: var(--success); font-weight: 600;">{{ "{:,.0f}".format(ord.total_amount) }} ₫</span>
+                            <span style="color: #4b5563;">{{ ord.shipping_status or 'Đang giao' }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="font-size: 12px; color: var(--text-muted);">Không tìm thấy đơn hàng nào với SĐT này.</p>
+                {% endif %}
+            </div>
+
+            <!-- Survey Review if already submitted -->
+            {% if survey %}
+            <div style="margin-top: 20px; padding: 12px; background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius-sm);">
+                <div style="font-weight: 700; color: #854d0e; font-size: 13px; margin-bottom: 4px;">
+                    Đánh giá của khách hàng:
+                </div>
+                <div style="font-size: 13px;">CSAT: <strong>{{ survey.rating_csat }}/5 sao</strong> | NPS: <strong>{{ survey.score_nps }}/10</strong></div>
+                {% if survey.feedback %}
+                <div style="font-style: italic; color: #4b5563; font-size: 12px; margin-top: 4px;">"{{ survey.feedback }}"</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function insertReply(text) {
+        const textarea = document.getElementById("reply-text");
+        if (textarea) {
+            textarea.value = text;
+            textarea.focus();
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Hiệu ứng phản hồi thị giác: viền xanh nổi bật và background sáng
+            textarea.style.transition = "border-color 0.2s, box-shadow 0.2s, background-color 0.2s";
+            textarea.style.borderColor = "#1a73e8";
+            textarea.style.boxShadow = "0 0 0 3px rgba(26, 115, 232, 0.2)";
+            textarea.style.backgroundColor = "#f8faff";
+            setTimeout(() => {
+                textarea.style.boxShadow = "";
+                textarea.style.backgroundColor = "";
+            }, 800);
+
+            // Tự động cuộn mượt tới khung soạn thảo
+            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    // Đảm bảo gắn sự kiện click cho các chip gợi ý ngay khi tải xong
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".smart-reply-chip").forEach(function(chip) {
+            chip.addEventListener("click", function() {
+                const text = this.getAttribute("data-reply") || this.innerText.trim();
+                insertReply(text);
+            });
+        });
+
+        // Tự động cuộn xuống cuối luồng chat
+        const feed = document.getElementById("ticket-feed-messages");
+        if (feed) feed.scrollTop = feed.scrollHeight;
+    });
+
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        document.querySelectorAll(".smart-reply-chip").forEach(function(chip) {
+            chip.addEventListener("click", function() {
+                const text = this.getAttribute("data-reply") || this.innerText.trim();
+                insertReply(text);
+            });
+        });
+        const feed = document.getElementById("ticket-feed-messages");
+        if (feed) feed.scrollTop = feed.scrollHeight;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1a73e8">
+    <title>{% block title %}Hệ thống CRM & Hỗ trợ Khách hàng AI{% endblock %}</title>
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <img src="{{ url_for('static', filename='cskh_brand_icon.png') }}" alt="CSKH Mobile" class="brand-logo-img">
+                <div class="brand-text-container">
+                    <div class="brand-title-row">
+                        <span class="brand-title-text">CSKH MOBILE</span>
+                        <span class="brand-badge">AI CHAT</span>
+                    </div>
+                    <span class="brand-subtitle-text">HỆ THỐNG CHĂM SÓC KHÁCH HÀNG</span>
+                </div>
+            </a>
+
+            <!-- Mobile Hamburger Button -->
+            <button class="mobile-toggle" id="mobile-toggle" aria-label="Mở Menu điều hướng" type="button">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <!-- Nav Collapse / Off-canvas Mobile Drawer -->
+            <div class="nav-collapse" id="nav-collapse">
+                <div class="mobile-drawer-header">
+                    <div class="drawer-user-info">
+                        {% if session.get('user_id') %}
+                            <div class="drawer-avatar">{{ (session.get('full_name') or session.get('username'))[:1]|upper }}</div>
+                            <div class="drawer-user-meta">
+                                <div class="drawer-username">{{ session.get('full_name') or session.get('username') }}</div>
+                                <span class="role-pill role-{{ session.get('role') }}">{{ session.get('role') }}</span>
+                            </div>
+                        {% else %}
+                            <div class="drawer-title">CSKH Mobile AI</div>
+                            <small style="color: #64748b;">Hệ thống CRM & Hỗ trợ khách hàng</small>
+                        {% endif %}
+                    </div>
+                    <button class="drawer-close" id="drawer-close" aria-label="Đóng menu" type="button">&times;</button>
+                </div>
+
+                <ul class="nav-menu">
+                    {% if session.get('user_id') %}
+                        {% if session.get('role') in ['agent', 'admin'] %}
+                            <li><a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a></li>
+                            <li><a href="/inbox" class="nav-link {% if request.path == '/inbox' %}active{% endif %}">Inbox tư vấn</a></li>
+                            <li><a href="/products" class="nav-link {% if '/products' in request.path %}active{% endif %}">Sản phẩm</a></li>
+                            <li><a href="/sales-orders" class="nav-link {% if '/sales-orders' in request.path %}active{% endif %}">Đơn hàng</a></li>
+                            <li><a href="/customers" class="nav-link {% if '/customers' in request.path %}active{% endif %}">Khách hàng</a></li>
+                            <li><a href="/tickets" class="nav-link {% if '/tickets' in request.path %}active{% endif %}">Tickets</a></li>
+                            <li><a href="/kanban" class="nav-link {% if '/kanban' in request.path %}active{% endif %}">Kanban</a></li>
+                        {% elif session.get('role') == 'customer' %}
+                            <li><a href="/portal" class="nav-link {% if request.path == '/portal' %}active{% endif %}">Cổng hỗ trợ</a></li>
+                            <li><a href="/products" class="nav-link {% if '/products' in request.path %}active{% endif %}">Xem sản phẩm</a></li>
+                            <li><a href="/warranties" class="nav-link {% if '/warranties' in request.path %}active{% endif %}">Sổ bảo hành</a></li>
+                            <li><a href="/portal/new-ticket" class="nav-link {% if request.path == '/portal/new-ticket' %}active{% endif %}">Gửi yêu cầu</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li><a href="/products" class="nav-link {% if '/products' in request.path %}active{% endif %}">Danh mục điện thoại</a></li>
+                        <li><a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Tra cứu sự cố & FAQs</a></li>
+                    {% endif %}
+                </ul>
+
+                <div class="nav-actions">
+                    {% if session.get('user_id') %}
+                        {% if session.get('role') in ['agent', 'admin'] %}
+                            <button class="btn btn-sm btn-softphone" id="btn-toggle-softphone" title="Mở Softphone" type="button">Gọi điện</button>
+                        {% endif %}
+                        
+                        <div class="user-badge desktop-only">
+                            <span>{{ session.get('full_name') or session.get('username') }}</span>
+                            <span class="role-pill role-{{ session.get('role') }}">{{ session.get('role') }}</span>
+                        </div>
+                        <a href="/logout" class="btn btn-sm btn-back" title="Đăng xuất">Đăng xuất</a>
+                    {% else %}
+                        <a href="/login" class="btn btn-sm btn-primary">Đăng nhập</a>
+                        <a href="/register" class="btn btn-sm btn-secondary">Đăng ký</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+
+    <!-- Main Content Container -->
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer Doanh Nghiệp (Thông tin Quản trị & Chính sách Bảo mật) -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <!-- Cột trái: Thương hiệu, Bản quyền & Chính sách bảo mật -->
+            <div class="footer-col">
+                <div class="footer-brand">
+                    <img src="{{ url_for('static', filename='cskh_brand_icon.png') }}" alt="CSKH Mobile" class="footer-logo">
+                    <div class="footer-brand-text">
+                        <div class="footer-brand-title">CSKH MOBILE</div>
+                        <div class="footer-brand-sub">HỆ THỐNG QUẢN LÝ DỮ LIỆU & CHĂM SÓC KHÁCH HÀNG AI</div>
+                    </div>
+                </div>
+                <div class="footer-desc">
+                    <p>Bản quyền thuộc về Hệ thống Quản trị & CSKH Mobile</p>
+                    <p>Hotline hỗ trợ: <a href="tel:0868643044">0868643044</a> | Kỹ thuật / Zalo: <a href="tel:0868643044">0868643044</a></p>
+                    <p><strong>Chính sách bảo mật:</strong> Hệ thống cam kết bảo mật 100% dữ liệu thông tin khách hàng (PII), lịch sử bảo hành thiết bị và hội thoại trao đổi theo quy chuẩn an toàn thông tin.</p>
+                    <p class="footer-note">Mọi hành vi sao chép dữ liệu hoặc truy cập trái phép khi chưa có sự đồng ý của Admin đều bị nghiêm cấm.</p>
+                </div>
+            </div>
+
+            <!-- Cột phải: Thông tin Quản trị viên Admin & Liên hệ -->
+            <div class="footer-col">
+                <div class="footer-section-title">Người chịu trách nhiệm & Quản lý hệ thống:</div>
+                <div class="footer-admin-name">Admin Hệ thống - Phụ trách Kỹ thuật & Vận hành Web</div>
+                
+                <div class="footer-contact-list">
+                    <p><strong>Đơn vị phát triển:</strong> Ban Quản trị Kỹ thuật Phần mềm CSKH Mobile</p>
+                    <p><strong>Hotline:</strong> <a href="tel:0868643044">0868643044</a> (Hỗ trợ 24/7)</p>
+                    <p><strong>Email liên hệ:</strong> <a href="mailto:huu17102006@gmail.com">huu17102006@gmail.com</a></p>
+                    <p><strong>Tiêu chuẩn an toàn:</strong> Xác thực phân quyền đa cấp độ RBAC, mã hóa dữ liệu đầu cuối và tự động ghi nhật ký kiểm toán hệ thống (Audit Logs).</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom-bar">
+            <div class="footer-bottom-content">
+                <span>© 2026 CSKH Mobile. Hệ thống được xây dựng và quản trị bởi Admin.</span>
+                <span>Hotline: <a href="tel:0868643044">0868643044</a> | Email: <a href="mailto:huu17102006@gmail.com">huu17102006@gmail.com</a></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Softphone Dialer Modal (Agent & Admin) -->
+    {% if session.get('user_id') and session.get('role') in ['agent', 'admin'] %}
+    <div id="softphone-modal" class="softphone-modal">
+        <div class="softphone-header">
+            <div>Softphone Trình duyệt</div>
+            <span id="close-softphone" style="cursor:pointer; font-size:18px;">&times;</span>
+        </div>
+        <div class="softphone-dialer">
+            <input type="text" id="dial-number" class="dial-screen" placeholder="Nhập SĐT khách..." value="0987654321">
+            <div class="dial-grid">
+                <button class="dial-btn" onclick="dialDigit('1')">1</button>
+                <button class="dial-btn" onclick="dialDigit('2')">2</button>
+                <button class="dial-btn" onclick="dialDigit('3')">3</button>
+                <button class="dial-btn" onclick="dialDigit('4')">4</button>
+                <button class="dial-btn" onclick="dialDigit('5')">5</button>
+                <button class="dial-btn" onclick="dialDigit('6')">6</button>
+                <button class="dial-btn" onclick="dialDigit('7')">7</button>
+                <button class="dial-btn" onclick="dialDigit('8')">8</button>
+                <button class="dial-btn" onclick="dialDigit('9')">9</button>
+                <button class="dial-btn" onclick="dialDigit('*')">*</button>
+                <button class="dial-btn" onclick="dialDigit('0')">0</button>
+                <button class="dial-btn" onclick="dialDigit('#')">#</button>
+            </div>
+            <div id="call-status-indicator" style="font-size:12px; margin-bottom:10px; color:#5f6368;">Sẵn sàng gọi</div>
+            <div class="dial-actions">
+                <button id="btn-make-call" class="btn-call" title="Bắt đầu gọi" onclick="startSoftphoneCall()">Gọi</button>
+                <button id="btn-end-call" class="btn-hangup" title="Kết thúc" style="display:none;" onclick="endSoftphoneCall()">Dừng</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        // Softphone Toggle Script
+        const softphoneToggleBtn = document.getElementById("btn-toggle-softphone");
+        const softphoneModal = document.getElementById("softphone-modal");
+        const closeSoftphoneBtn = document.getElementById("close-softphone");
+        const dialNumberInput = document.getElementById("dial-number");
+        const statusIndicator = document.getElementById("call-status-indicator");
+        const btnMakeCall = document.getElementById("btn-make-call");
+        const btnEndCall = document.getElementById("btn-end-call");
+
+        if (softphoneToggleBtn && softphoneModal) {
+            softphoneToggleBtn.addEventListener("click", () => {
+                softphoneModal.classList.toggle("show");
+            });
+            closeSoftphoneBtn.addEventListener("click", () => {
+                softphoneModal.classList.remove("show");
+            });
+        }
+
+        function dialDigit(digit) {
+            if (dialNumberInput) dialNumberInput.value += digit;
+        }
+
+        async function startSoftphoneCall(targetPhone) {
+            if (targetPhone && dialNumberInput) dialNumberInput.value = targetPhone;
+            const phone = dialNumberInput ? dialNumberInput.value.trim() : "";
+            if (!phone) {
+                alert("Vui lòng nhập số điện thoại.");
+                return;
+            }
+            if (softphoneModal) softphoneModal.classList.add("show");
+            statusIndicator.textContent = "Đang kết nối tổng đài Twilio...";
+            statusIndicator.style.color = "#1a73e8";
+
+            try {
+                const res = await fetch("/api/telephony/call", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ to_phone: phone })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusIndicator.textContent = `Đang gọi tới ${phone} (SID: ${data.call_sid.substring(0, 10)}...)`;
+                    statusIndicator.style.color = "#0f9d58";
+                    btnMakeCall.style.display = "none";
+                    btnEndCall.style.display = "inline-block";
+                    window.currentCallSid = data.call_sid;
+                } else {
+                    statusIndicator.textContent = "Lỗi: " + data.message;
+                    statusIndicator.style.color = "#db4437";
+                }
+            } catch (err) {
+                statusIndicator.textContent = "Không thể kết nối tới máy chủ.";
+                statusIndicator.style.color = "#db4437";
+            }
+        }
+
+        async function endSoftphoneCall() {
+            statusIndicator.textContent = "Đã ngắt cuộc gọi.";
+            statusIndicator.style.color = "#5f6368";
+            btnMakeCall.style.display = "inline-block";
+            btnEndCall.style.display = "none";
+            
+            if (window.currentCallSid) {
+                fetch("/api/telephony/status_callback", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                    body: `CallSid=${window.currentCallSid}&CallDuration=42&CallStatus=completed`
+                });
+            }
+        // Mobile Navigation Drawer Toggle
+        const mobileToggle = document.getElementById("mobile-toggle");
+        const navCollapse = document.getElementById("nav-collapse");
+        const mobileOverlay = document.getElementById("mobile-overlay");
+        const drawerClose = document.getElementById("drawer-close");
+
+        function closeMobileDrawer() {
+            if (mobileToggle) mobileToggle.classList.remove("active");
+            if (navCollapse) navCollapse.classList.remove("show");
+            if (mobileOverlay) mobileOverlay.classList.remove("show");
+            document.body.style.overflow = "";
+        }
+
+        function openMobileDrawer() {
+            if (mobileToggle) mobileToggle.classList.add("active");
+            if (navCollapse) navCollapse.classList.add("show");
+            if (mobileOverlay) mobileOverlay.classList.add("show");
+            document.body.style.overflow = "hidden";
+        }
+
+        if (mobileToggle) {
+            mobileToggle.addEventListener("click", () => {
+                if (navCollapse && navCollapse.classList.contains("show")) {
+                    closeMobileDrawer();
+                } else {
+                    openMobileDrawer();
+                }
+            });
+        }
+
+        if (drawerClose) drawerClose.addEventListener("click", closeMobileDrawer);
+        if (mobileOverlay) mobileOverlay.addEventListener("click", closeMobileDrawer);
+
+        // Helper functions for Mobile Bottom Navigation
+        function openAIChatMobile() {
+            const chatWin = document.getElementById("chat-window");
+            const chatInput = document.getElementById("chat-input");
+            if (chatWin) {
+                chatWin.classList.add("show");
+                if (chatInput) setTimeout(() => chatInput.focus(), 300);
+            }
+        }
+
+        function toggleSoftphoneMobile() {
+            const modal = document.getElementById("softphone-modal");
+            if (modal) modal.classList.toggle("show");
+        }
+    </script>
+
+    <!-- Nút bong bóng chat AI hỗ trợ -->
+    <button id="chat-button" class="chat-button" title="Trợ lý AI hỗ trợ 24/7" aria-label="Mở chat AI">
+        <img src="{{ url_for('static', filename='chatbot_fitted_logo.png') }}" alt="AI Logo">
+    </button>
+
+    <!-- Cửa sổ Chat AI -->
+    <div id="chat-window" class="chat-window">
+        <div id="chat-header" class="chat-header" style="background: linear-gradient(135deg, #091227 0%, #1e3a8a 100%);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="{{ url_for('static', filename='chatbot_logo.png') }}" alt="AI Logo" style="width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #00d2ff; object-fit: cover;">
+                <div>
+                    <div style="font-weight: 700; font-size: 15px; color: #fff; line-height: 1.2;">CHATBOT AI CSKH</div>
+                    <div style="font-size: 11px; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
+                        <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e;"></span>
+                        Trực tuyến 24/7
+                    </div>
+                </div>
+            </div>
+            <span id="chat-close" style="cursor: pointer; font-size: 22px; line-height: 1; opacity: 0.85; color: white;">&times;</span>
+        </div>
+        <div id="chat-messages" class="chat-messages">
+            <div class="chat-message bot">
+                <div class="message-content">Xin chào! Tôi là trợ lý AI thông minh hỗ trợ khách hàng. Bạn có thể hỏi tôi bất kỳ điều gì về điện thoại, bảo hành, chính sách mua hàng hoặc hỗ trợ kỹ thuật!</div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Hỏi tôi về chính sách, lỗi máy..." autocomplete="off">
+            <button id="chat-send" title="Gửi tin nhắn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar (Dành riêng cho màn hình điện thoại) -->
+    <div class="mobile-bottom-bar">
+        {% if session.get('user_id') %}
+            {% if session.get('role') in ['agent', 'admin'] %}
+                <a href="/dashboard" class="bottom-bar-item {% if request.path == '/dashboard' %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                    </span>
+                    <span class="bottom-bar-label">Tổng quan</span>
+                </a>
+                <a href="/inbox" class="bottom-bar-item {% if request.path == '/inbox' %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    </span>
+                    <span class="bottom-bar-label">Hộp thư</span>
+                </a>
+                <a href="/products" class="bottom-bar-item {% if '/products' in request.path %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                    </span>
+                    <span class="bottom-bar-label">Sản phẩm</span>
+                </a>
+                <a href="/tickets" class="bottom-bar-item {% if '/tickets' in request.path %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"></path><line x1="13" y1="5" x2="13" y2="7"></line><line x1="13" y1="11" x2="13" y2="13"></line><line x1="13" y1="17" x2="13" y2="19"></line></svg>
+                    </span>
+                    <span class="bottom-bar-label">Tickets</span>
+                </a>
+                <a href="javascript:void(0)" class="bottom-bar-item" onclick="toggleSoftphoneMobile()">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </span>
+                    <span class="bottom-bar-label">Gọi điện</span>
+                </a>
+            {% elif session.get('role') == 'customer' %}
+                <a href="/portal" class="bottom-bar-item {% if request.path == '/portal' %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    </span>
+                    <span class="bottom-bar-label">Trang chủ</span>
+                </a>
+                <a href="/products" class="bottom-bar-item {% if '/products' in request.path %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                    </span>
+                    <span class="bottom-bar-label">Sản phẩm</span>
+                </a>
+                <a href="/warranties" class="bottom-bar-item {% if '/warranties' in request.path %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </span>
+                    <span class="bottom-bar-label">Bảo hành</span>
+                </a>
+                <a href="/portal/new-ticket" class="bottom-bar-item {% if request.path == '/portal/new-ticket' %}active{% endif %}">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                    </span>
+                    <span class="bottom-bar-label">Gửi Ticket</span>
+                </a>
+                <a href="javascript:void(0)" class="bottom-bar-item" onclick="openAIChatMobile()">
+                    <span class="bottom-bar-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    </span>
+                    <span class="bottom-bar-label">Chat AI</span>
+                </a>
+            {% endif %}
+        {% else %}
+            <a href="/" class="bottom-bar-item {% if request.path == '/' %}active{% endif %}">
+                <span class="bottom-bar-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
+                <span class="bottom-bar-label">Tra cứu</span>
+            </a>
+            <a href="/products" class="bottom-bar-item {% if '/products' in request.path %}active{% endif %}">
+                <span class="bottom-bar-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                </span>
+                <span class="bottom-bar-label">Sản phẩm</span>
+            </a>
+            <a href="/login" class="bottom-bar-item {% if request.path == '/login' %}active{% endif %}">
+                <span class="bottom-bar-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                </span>
+                <span class="bottom-bar-label">Đăng nhập</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-bar-item" onclick="openAIChatMobile()">
+                <span class="bottom-bar-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                </span>
+                <span class="bottom-bar-label">Chat AI</span>
+            </a>
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='chat.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

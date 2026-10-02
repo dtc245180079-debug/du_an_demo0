@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Đánh Giá Chất Lượng Dịch Vụ - Ticket {{ ticket.ticket_code }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 620px; margin: 30px auto;">
+    <div class="card" style="padding: 35px 30px; text-align: center;">
+        <div style="display: inline-flex; width: 48px; height: 48px; border-radius: 50%; background: var(--bg-hover); color: var(--primary); align-items: center; justify-content: center; margin-bottom: 12px; font-weight: 700; font-size: 14px;">CSAT</div>
+        <h2 style="margin: 0; font-size: 22px;">Khảo Sát Chất Lượng Dịch Vụ CSKH</h2>
+        <p style="color: var(--text-muted); font-size: 14px; margin: 8px 0 20px 0;">
+            Phiếu hỗ trợ <strong>[{{ ticket.ticket_code }}]</strong>: <em>{{ ticket.subject }}</em>
+        </p>
+
+        <form method="POST" action="/portal/survey/{{ ticket.id }}">
+            <!-- CSAT 1-5 Stars -->
+            <div style="margin-bottom: 25px; padding: 20px; background: #f8fafc; border-radius: var(--radius-md);">
+                <label style="display: block; font-weight: 700; margin-bottom: 12px; font-size: 15px;">
+                    1. Bạn đánh giá mức độ hài lòng về cách giải quyết của chuyên viên như thế nào? (CSAT)
+                </label>
+                <div style="display: flex; justify-content: center; gap: 15px; font-size: 22px;">
+                    {% for i in range(1, 6) %}
+                    <label style="cursor: pointer; display: flex; flex-direction: column; align-items: center;">
+                        <input type="radio" name="rating_csat" value="{{ i }}" {% if i == 5 %}checked{% endif %} style="margin-bottom: 5px;">
+                        <span style="color: #f59e0b; font-weight: bold;">★</span>
+                        <small style="font-size: 11px; color: var(--text-muted);">{{ i }} sao</small>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- NPS 0-10 Score -->
+            <div style="margin-bottom: 25px; padding: 20px; background: #f8fafc; border-radius: var(--radius-md);">
+                <label style="display: block; font-weight: 700; margin-bottom: 12px; font-size: 15px;">
+                    2. Trên thang điểm từ 0 đến 10, bạn có sẵn lòng giới thiệu dịch vụ tới bạn bè hoặc người thân? (NPS)
+                </label>
+                <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                    {% for score in range(0, 11) %}
+                    <label style="cursor: pointer; padding: 8px 12px; background: white; border: 1px solid var(--border-color); border-radius: 6px; font-weight: bold;">
+                        <input type="radio" name="score_nps" value="{{ score }}" {% if score == 10 %}checked{% endif %}>
+                        {{ score }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+                    <span>0: Hoàn toàn không</span>
+                    <span>10: Rất sẵn lòng</span>
+                </div>
+            </div>
+
+            <!-- Feedback Comment -->
+            <div class="form-group" style="text-align: left;">
+                <label style="font-weight: 700;">3. Ý kiến đóng góp hoặc nhận xét thêm của bạn:</label>
+                <textarea name="feedback" rows="3" class="form-control" placeholder="Chuyên viên hỗ trợ rất nhiệt tình, nhanh chóng..."></textarea>
+            </div>
+
+            <div style="margin-top: 25px; display: flex; justify-content: center; gap: 15px;">
+                <button type="submit" class="btn btn-save" style="padding: 10px 24px;">
+                    Gửi Đánh Giá
+                </button>
+                <a href="/portal" class="btn btn-back">Để sau</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

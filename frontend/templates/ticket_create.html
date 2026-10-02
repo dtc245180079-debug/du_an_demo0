@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Tạo Phiếu Hỗ Trợ Mới - CRM Care AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px; margin: 0 auto;">
+    <div class="page-header">
+        <h1 class="page-title">TIẾP NHẬN PHIẾU HỖ TRỢ MỚI</h1>
+        <a href="/tickets" class="btn btn-secondary">Quay lại danh sách</a>
+    </div>
+
+    <form method="POST" action="/tickets/create" class="form-box">
+        <div class="form-group">
+            <label>Tiêu đề yêu cầu hỗ trợ:</label>
+            <input type="text" name="subject" class="form-control" required placeholder="VD: Khách hàng hỏi thủ tục thay màn hình iPhone 15 Pro..." autofocus>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Tên khách hàng:</label>
+                <input type="text" name="customer_name" class="form-control" value="{{ selected_customer.full_name if selected_customer else '' }}" required placeholder="Nguyễn Văn A">
+            </div>
+
+            <div class="form-group">
+                <label>Số điện thoại khách:</label>
+                <input type="tel" name="customer_phone" class="form-control" value="{{ selected_customer.phone if selected_customer else '' }}" required placeholder="0901234567">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Kênh tiếp nhận:</label>
+                <select name="channel" class="form-control">
+                    <option value="web">Website Livechat</option>
+                    <option value="zalo">Zalo OA</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="email">Email</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Mức độ ưu tiên:</label>
+                <select name="priority" class="form-control">
+                    <option value="low">Thấp</option>
+                    <option value="medium" selected>Trung bình</option>
+                    <option value="high">Cao</option>
+                    <option value="urgent">Khẩn cấp</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Gán chuyên viên:</label>
+                <select name="assigned_agent_id" class="form-control">
+                    <option value="{{ session.get('user_id') }}">Chính tôi ({{ session.get('full_name') }})</option>
+                    {% for a in agents %}
+                    {% if a.id != session.get('user_id') %}
+                    <option value="{{ a.id }}">{{ a.full_name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Nội dung chi tiết yêu cầu / Tin nhắn đầu tiên:</label>
+            <textarea name="message" rows="4" class="form-control" placeholder="Ghi nhận vấn đề của khách hoặc câu hỏi khách hàng đặt ra..." required></textarea>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px;">
+            <button type="submit" class="btn btn-save">Tiếp Nhận & Mở Phiếu</button>
+            <a href="/tickets" class="btn btn-back">Hủy bỏ</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

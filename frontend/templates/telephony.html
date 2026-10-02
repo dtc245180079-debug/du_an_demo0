@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Nhật Ký Cuộc Gọi Softphone - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">NHẬT KÝ CUỘC GỌI TỔNG ĐÀI (TWILIO SOFTPHONE)</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Lịch sử cuộc gọi đi / đến trên trình duyệt web, thời lượng và bản ghi âm cuộc gọi
+        </p>
+    </div>
+    <div>
+        <button class="btn btn-softphone" onclick="document.getElementById('softphone-modal').classList.add('show')">
+            Mở Bàn Phím Softphone
+        </button>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 60px;">ID</th>
+                <th style="width: 150px;">Thời Gian</th>
+                <th style="width: 140px;">Chuyên Viên</th>
+                <th style="width: 140px;">Số Khách Hàng</th>
+                <th style="width: 100px;">Chiều Gọi</th>
+                <th style="width: 100px;">Thời Lượng</th>
+                <th style="width: 120px;">Trạng Thái</th>
+                <th>Ghi Âm Cuộc Gọi / Ghi Chú</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if call_logs %}
+            {% for c in call_logs %}
+            <tr>
+                <td>#{{ c.id }}</td>
+                <td style="font-size: 12px; color: var(--text-muted);">
+                    {{ c.created_at.strftime("%d/%m/%Y %H:%M") if c.created_at else '' }}
+                </td>
+                <td><strong>{{ c.agent_name or 'Tổng đài' }}</strong></td>
+                <td>
+                    <strong>{{ c.customer_phone }}</strong>
+                    <button class="btn btn-sm btn-softphone" style="padding: 1px 4px; font-size: 10px; margin-left: 4px;" onclick="startSoftphoneCall('{{ c.customer_phone }}')">Gọi</button>
+                </td>
+                <td>
+                    {% if c.direction == 'outbound' %}
+                        <span class="badge" style="background:#e8f0fe; color:#1a73e8;">Gọi đi</span>
+                    {% else %}
+                        <span class="badge" style="background:#e6f4ea; color:#137333;">Gọi đến</span>
+                    {% endif %}
+                </td>
+                <td>{{ c.call_duration }} giây</td>
+                <td>
+                    <span class="badge" style="background:#f1f3f4; color:#333;">
+                        {{ c.status }}
+                    </span>
+                </td>
+                <td>
+                    {% if c.recording_url %}
+                        <audio controls style="height: 30px; width: 220px; vertical-align: middle;">
+                            <source src="{{ c.recording_url }}" type="audio/mpeg">
+                        </audio>
+                    {% endif %}
+                    {% if c.notes %}
+                        <span style="font-size: 12px; color: #5f6368; margin-left: 8px;">{{ c.notes }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                    Chưa có nhật ký cuộc gọi nào.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

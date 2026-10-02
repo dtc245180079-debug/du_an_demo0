@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Thông số & Giá bán - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <a href="/products" style="text-decoration: none; color: var(--text-muted);">Quay lại Danh mục điện thoại</a>
+            <span class="badge" style="background: #e0e7ff; color: #3730a3; font-weight: 700;">{{ product.brand }}</span>
+            {% if product.stock_quantity > 0 %}
+                <span class="badge" style="background: #e6f4ea; color: #137333;">Còn hàng ({{ product.stock_quantity }})</span>
+            {% else %}
+                <span class="badge" style="background: #fee2e2; color: #b91c1c;">Hết hàng</span>
+            {% endif %}
+        </div>
+        <h1 class="page-title">{{ product.name }}</h1>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        <a href="/products/compare?p1={{ product.id }}" class="btn btn-secondary">So sánh với máy khác</a>
+        <a href="/quotations/create?product_id={{ product.id }}" class="btn btn-primary">Lập báo giá cho khách</a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- Left Column: Specs Table & Price History -->
+    <div>
+        <!-- Main Price Card -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 13px; color: var(--text-muted);">Giá bán áp dụng hiện hành:</div>
+                    {% if product.promo_price and product.promo_price < product.listed_price %}
+                        <div style="font-size: 28px; font-weight: 700; color: var(--danger);">
+                            {{ "{:,.0f}".format(product.promo_price) }} ₫
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-muted); text-decoration: line-through;">
+                            Giá niêm yết: {{ "{:,.0f}".format(product.listed_price) }} ₫
+                        </div>
+                    {% else %}
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary);">
+                            {{ "{:,.0f}".format(product.listed_price) }} ₫
+                        </div>
+                    {% endif %}
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 13px; color: var(--text-muted);">Tồn kho thực tế:</div>
+                    <div style="font-size: 20px; font-weight: 700;">{{ product.stock_quantity }} chiếc</div>
+                    <small style="color: var(--text-muted);">Kho: {{ product.warehouse_location }}</small>
+                </div>
+            </div>
+            {% if product.description %}
+            <p style="margin: 15px 0 0 0; font-size: 14px; color: #4b5563; line-height: 1.6; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                {{ product.description }}
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Technical Specifications Table -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span>Bảng Thông Số Kỹ Thuật Đầy Đủ</span>
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td style="width: 220px; font-weight: 600; color: var(--text-muted);">Màn hình hiển thị</td>
+                            <td><strong>{{ product.screen_spec or 'Đang cập nhật' }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Vi xử lý (Chipset / CPU)</td>
+                            <td><strong>{{ product.chip_spec or 'Đang cập nhật' }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Bộ nhớ RAM</td>
+                            <td>{{ product.ram_spec or 'Đang cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Dung lượng lưu trữ</td>
+                            <td>{{ product.storage_spec or 'Đang cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Hệ thống Camera</td>
+                            <td>{{ product.camera_spec or 'Đang cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Dung lượng Pin & Sạc</td>
+                            <td>{{ product.battery_spec or 'Đang cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Hệ điều hành</td>
+                            <td>{{ product.os_spec or 'Đang cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Kết nối & Mạng</td>
+                            <td>{{ product.connectivity_spec or 'Đang cập nhật' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted);">Chế độ bảo hành</td>
+                            <td><span class="badge" style="background:#e6f4ea; color:#137333;">{{ product.warranty_months }} tháng chính hãng</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Price Change History -->
+        <div class="card">
+            <div class="card-title">
+                <span>Lịch Sử Thay Đổi Giá & Kiểm Toán</span>
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Giá niêm yết cũ → mới</th>
+                            <th>Giá KM cũ → mới</th>
+                            <th>Người thực hiện</th>
+                            <th>Lý do</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if price_history %}
+                        {% for h in price_history %}
+                        <tr>
+                            <td style="font-size: 12px; color: var(--text-muted);">{{ h.created_at.strftime("%d/%m/%Y %H:%M") if h.created_at else '' }}</td>
+                            <td>{{ "{:,.0f}".format(h.old_listed_price or 0) }} ₫ → <strong>{{ "{:,.0f}".format(h.new_listed_price) }} ₫</strong></td>
+                            <td>{{ "{:,.0f}".format(h.old_promo_price or 0) }} ₫ → <strong style="color: var(--danger);">{{ "{:,.0f}".format(h.new_promo_price or 0) }} ₫</strong></td>
+                            <td><strong>{{ h.changed_by_name or 'Hệ thống' }}</strong></td>
+                            <td style="font-size: 12px; color: #4b5563;">{{ h.reason }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 15px;">Chưa có thay đổi giá nào từ lúc tạo.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Update Price & Stock (Staff / Admin Only) -->
+    <div>
+        {% if session.get('role') in ['agent', 'admin'] %}
+        <div class="card">
+            <div class="card-title">
+                <span>Cập Nhật Giá & Tồn Kho</span>
+            </div>
+            <form method="POST" action="/products/{{ product.id }}/update-price">
+                <div class="form-group">
+                    <label>Giá niêm yết mới (VNĐ):</label>
+                    <input type="number" name="listed_price" class="form-control" value="{{ product.listed_price|int }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Giá khuyến mãi mới (VNĐ):</label>
+                    <input type="number" name="promo_price" class="form-control" value="{{ product.promo_price|int if product.promo_price else '' }}" placeholder="Để trống nếu không khuyến mãi">
+                </div>
+
+                <div class="form-group">
+                    <label>Số lượng tồn kho:</label>
+                    <input type="number" name="stock_quantity" class="form-control" value="{{ product.stock_quantity }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Kho hàng / Cửa hàng:</label>
+                    <input type="text" name="warehouse_location" class="form-control" value="{{ product.warehouse_location }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Lý do điều chỉnh giá:</label>
+                    <input type="text" name="change_reason" class="form-control" placeholder="VD: Chương trình khuyến mãi đầu tháng, xả kho..." required>
+                </div>
+
+                <button type="submit" class="btn btn-save" style="width: 100%; justify-content: center;">
+                    Lưu Giá & Tồn Kho Mới
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Quick Variant Summary -->
+        <div class="card">
+            <div class="card-title">
+                <span>Các Phiên Bản & Màu Sắc</span>
+            </div>
+            {% if variants %}
+                {% for v in variants %}
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 8px; font-size: 13px; display: flex; justify-content: space-between;">
+                    <div>
+                        <strong>{{ v.color }}</strong> - {{ v.storage }}
+                        <div style="font-size: 11px; color: var(--text-muted);">SKU: {{ v.sku }}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="badge" style="background:#e8f0fe; color:#1a73e8;">Tồn: {{ v.stock_quantity }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 13px; color: var(--text-muted);">Chưa có biến thể chi tiết.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Tư Vấn Chọn Điện Thoại Thông Minh - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">TRỢ LÝ TƯ VẤN CHỌN ĐIỆN THOẠI THÔNG MINH</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Ghi nhận nhu cầu khách hàng, thuật toán tự động đề xuất dòng máy tối ưu và lưu vào hồ sơ Customer 360
+        </p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 400px 1fr; gap: 24px;">
+    <!-- Left Column: Needs Assessment Form -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Phiếu Khảo Sát Nhu Cầu</span>
+            </div>
+
+            <form method="POST" action="/consultation">
+                <div class="form-group">
+                    <label>Khách hàng cần tư vấn:</label>
+                    <select name="customer_id" class="form-control" required>
+                        {% for c in customers %}
+                        <option value="{{ c.id }}" {% if selected_cust and selected_cust.id == c.id %}selected{% endif %}>
+                            {{ c.full_name }} ({{ c.phone or 'Chưa có SĐT' }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Ngân sách từ (VNĐ):</label>
+                        <input type="number" name="budget_min" class="form-control" value="{{ pref.budget_min|int if pref and pref.budget_min else 10000000 }}" placeholder="10,000,000">
+                    </div>
+                    <div class="form-group">
+                        <label>Đến (VNĐ):</label>
+                        <input type="number" name="budget_max" class="form-control" value="{{ pref.budget_max|int if pref and pref.budget_max else 35000000 }}" placeholder="35,000,000">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Mục đích sử dụng chính:</label>
+                    <select name="primary_usage" class="form-control">
+                        <option value="Chụp ảnh quay phim & Sang trọng" {% if pref and 'Chụp ảnh' in pref.primary_usage %}selected{% endif %}>Chụp ảnh, quay phim sắc nét & Sang trọng</option>
+                        <option value="Chơi game & Hiệu năng cao" {% if pref and 'Chơi game' in pref.primary_usage %}selected{% endif %}>Chơi game đồ họa nặng & Xử lý mượt mà</option>
+                        <option value="Pin trâu & Công việc hàng ngày" {% if pref and 'Pin trâu' in pref.primary_usage %}selected{% endif %}>Pin trâu cả ngày, sạc nhanh & Độ bền cao</option>
+                        <option value="Văn phòng học tập & Tầm trung" {% if pref and 'Văn phòng' in pref.primary_usage %}selected{% endif %}>Văn phòng, lướt web, học tập cơ bản</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Thương hiệu ưa thích:</label>
+                    <select name="preferred_brands" class="form-control">
+                        <option value="all">Tất cả thương hiệu</option>
+                        <option value="Apple" {% if pref and pref.preferred_brands == 'Apple' %}selected{% endif %}>Apple (iPhone)</option>
+                        <option value="Samsung" {% if pref and pref.preferred_brands == 'Samsung' %}selected{% endif %}>Samsung (Galaxy)</option>
+                        <option value="Xiaomi" {% if pref and pref.preferred_brands == 'Xiaomi' %}selected{% endif %}>Xiaomi</option>
+                        <option value="Oppo" {% if pref and pref.preferred_brands == 'Oppo' %}selected{% endif %}>Oppo</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Kích thước màn hình mong muốn:</label>
+                    <select name="desired_screen_size" class="form-control">
+                        <option value="Nhỏ gọn < 6.2 inch">Nhỏ gọn dễ cầm (< 6.2 inch)</option>
+                        <option value="Vừa 6.3 - 6.6 inch" selected>Vừa vặn xem phim (6.3 - 6.6 inch)</option>
+                        <option value="Lớn > 6.7 inch">Màn hình lớn tối đa (> 6.7 inch)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tiêu chí đặc biệt quan trọng:</label>
+                    <input type="text" name="key_criteria" class="form-control" value="{{ pref.key_criteria if pref else 'Hỗ trợ trả góp 0%, Kháng nước, Bảo hành chính hãng' }}" placeholder="VD: Trả góp 0%, Chống nước IP68, Camera zoom...">
+                </div>
+
+                <div class="form-group">
+                    <label>Ghi chú của tư vấn viên:</label>
+                    <textarea name="agent_notes" rows="2" class="form-control" placeholder="Ghi nhận sở thích màu sắc, thời điểm khách dự định mua...">{{ pref.agent_notes if pref else '' }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px;">
+                    Phân Tích & Đề Xuất Máy Phù Hợp
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Recommendation Results -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Danh Sách Mẫu Điện Thoại Đề Xuất Cho Khách</span>
+                <span class="badge" style="background:#e8f0fe; color:#1a73e8;">{{ recommendations|length }} mẫu phù hợp</span>
+            </div>
+
+            {% if recommendations %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+                {% for r in recommendations %}
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span class="badge" style="background:#e0e7ff; color:#3730a3; font-weight:700;">{{ r.brand }}</span>
+                            <span class="badge" style="background:#e6f4ea; color:#137333;">Tồn kho: {{ r.stock_quantity }}</span>
+                        </div>
+                        <h4 style="margin: 0 0 6px 0; font-size: 16px;">{{ r.name }}</h4>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--danger); margin-bottom: 8px;">
+                            {{ "{:,.0f}".format(r.promo_price or r.listed_price) }} ₫
+                        </div>
+                        <div style="font-size: 12px; color: #4b5563; line-height: 1.5; margin-bottom: 12px;">
+                            • <strong>Chip:</strong> {{ r.chip_spec }}<br>
+                            • <strong>Camera:</strong> {{ r.camera_spec }}<br>
+                            • <strong>Pin:</strong> {{ r.battery_spec }}<br>
+                            • <strong>Bảo hành:</strong> {{ r.warranty_months }} tháng
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                        <a href="/quotations/create?customer_id={{ selected_cust.id if selected_cust else 1 }}&product_id={{ r.id }}" class="btn btn-sm btn-primary" style="justify-content: center;">
+                            Tạo báo giá cho khách
+                        </a>
+                        <form method="POST" action="/api/inbox/send-product-card" style="margin: 0;">
+                            <input type="hidden" name="product_id" value="{{ r.id }}">
+                            <input type="hidden" name="customer_phone" value="{{ selected_cust.phone if selected_cust else '0987654321' }}">
+                            <button type="submit" class="btn btn-sm btn-secondary" style="width: 100%; justify-content: center;">
+                                Gửi thẻ máy vào Inbox
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
+                <h4>Sẵn sàng tư vấn chọn máy</h4>
+                <p>Vui lòng chọn khách hàng và thiết lập tiêu chí khảo sát bên trái để hệ thống đề xuất các mẫu điện thoại tối ưu nhất.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}So Sánh Điện Thoại Di Động - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">SO SÁNH CÁC MẪU ĐIỆN THOẠI</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            So sánh chi tiết thông số kỹ thuật, cấu hình, giá bán và thời lượng pin để tư vấn chính xác cho khách hàng
+        </p>
+    </div>
+    <a href="/products" class="btn btn-secondary">Quay lại Danh mục điện thoại</a>
+</div>
+
+<!-- Product Selector Form -->
+<div class="card" style="padding: 18px 24px; margin-bottom: 24px;">
+    <form method="GET" action="/products/compare" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Mẫu máy 1:</label>
+            <select name="p1" class="form-control">
+                <option value="">-- Chọn máy 1 --</option>
+                {% for p in all_products %}
+                <option value="{{ p.id }}" {% if sel_p1 and sel_p1.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.brand }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="flex: 1; min-width: 200px;">
+            <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Mẫu máy 2:</label>
+            <select name="p2" class="form-control">
+                <option value="">-- Chọn máy 2 --</option>
+                {% for p in all_products %}
+                <option value="{{ p.id }}" {% if sel_p2 and sel_p2.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.brand }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="flex: 1; min-width: 200px;">
+            <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Mẫu máy 3 (tùy chọn):</label>
+            <select name="p3" class="form-control">
+                <option value="">-- Chọn máy 3 --</option>
+                {% for p in all_products %}
+                <option value="{{ p.id }}" {% if sel_p3 and sel_p3.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.brand }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+            So Sánh Ngay
+        </button>
+    </form>
+</div>
+
+<!-- Comparison Table -->
+{% if compare_list %}
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 200px; background: #f8fafc;">Tiêu chí so sánh</th>
+                {% for p in compare_list %}
+                <th style="text-align: center; font-size: 15px; color: var(--primary);">
+                    {{ p.name }}
+                    <div style="font-size: 12px; font-weight: normal; color: var(--text-muted); margin-top: 3px;">
+                        Thương hiệu: {{ p.brand }}
+                    </div>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Giá bán ưu đãi</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">
+                    {% if p.promo_price and p.promo_price < p.listed_price %}
+                        <div style="font-size: 18px; font-weight: 700; color: var(--danger);">{{ "{:,.0f}".format(p.promo_price) }} ₫</div>
+                        <small style="text-decoration: line-through; color: var(--text-muted);">{{ "{:,.0f}".format(p.listed_price) }} ₫</small>
+                    {% else %}
+                        <div style="font-size: 18px; font-weight: 700; color: var(--primary);">{{ "{:,.0f}".format(p.listed_price) }} ₫</div>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Tình trạng hàng</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">
+                    {% if p.stock_quantity > 0 %}
+                        <span class="badge" style="background:#e6f4ea; color:#137333;">Còn hàng ({{ p.stock_quantity }})</span>
+                    {% else %}
+                        <span class="badge" style="background:#fee2e2; color:#b91c1c;">Hết hàng</span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Màn hình</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">{{ p.screen_spec }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Vi xử lý (Chipset)</td>
+                {% for p in compare_list %}
+                <td style="text-align: center; font-weight: 600;">{{ p.chip_spec }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">RAM & Bộ nhớ</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">RAM: {{ p.ram_spec }} | ROM: {{ p.storage_spec }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Camera sau & trước</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">{{ p.camera_spec }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Pin & Công nghệ sạc</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">{{ p.battery_spec }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Hệ điều hành</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">{{ p.os_spec }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Bảo hành chính hãng</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">{{ p.warranty_months }} tháng</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td style="font-weight: 600; background: #f8fafc;">Thao tác tư vấn</td>
+                {% for p in compare_list %}
+                <td style="text-align: center;">
+                    <a href="/quotations/create?product_id={{ p.id }}" class="btn btn-sm btn-primary">
+                        Lập báo giá máy này
+                    </a>
+                </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">
+    Vui lòng chọn ít nhất 2 mẫu điện thoại từ danh sách bên trên để bắt đầu so sánh chi tiết.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Đăng nhập - Hệ thống CRM Care AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 40px auto;">
+    <div class="card" style="padding: 35px 30px;">
+        <div style="text-align: center; margin-bottom: 25px;">
+            <div style="display: inline-flex; width: 48px; height: 48px; border-radius: 50%; background: var(--bg-hover); color: var(--primary); align-items: center; justify-content: center; margin-bottom: 12px; font-weight: 700; font-size: 14px;">CRM</div>
+            <h2 style="margin: 0; font-size: 22px;">Đăng Nhập Hệ Thống</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin-top: 6px;">
+                Đăng nhập để vào không gian làm việc CRM hoặc Cổng hỗ trợ khách hàng
+            </p>
+        </div>
+
+        <form method="POST" action="/login">
+            <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+            
+            <div class="form-group">
+                <label>Tên đăng nhập hoặc Email:</label>
+                <input type="text" name="username_or_email" class="form-control" required placeholder="admin / nhanvien / khachhang" autofocus>
+            </div>
+
+            <div class="form-group">
+                <label>Mật khẩu:</label>
+                <input type="password" name="password" class="form-control" required placeholder="Nhập mật khẩu...">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px; margin-top: 10px;">
+                Đăng Nhập
+            </button>
+        </form>
+
+        <div style="margin: 25px 0 20px 0; text-align: center; position: relative;">
+            <hr style="border: 0; border-top: 1px solid var(--border-color);">
+            <span style="position: absolute; top: -10px; background: white; padding: 0 10px; color: var(--text-muted); font-size: 12px; left: 50%; transform: translateX(-50%);">
+                HOẶC
+            </span>
+        </div>
+
+        <!-- Google OpenID Connect Login Button -->
+        <a href="/auth/google/login" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 10px; background: #fff; border: 1px solid var(--border-color); color: #3c4043; font-weight: 600;">
+            <svg width="18" height="18" viewBox="0 0 18 18" style="margin-right: 8px;"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707 0-.59.102-1.167.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+            Đăng nhập với Google
+        </a>
+
+        <div style="margin-top: 25px; padding: 14px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 13px;">
+            <div style="font-weight: 600; color: var(--text-main); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                <span>Đăng nhập nhanh 1-Click (Demo/Test):</span>
+                <span style="font-size: 11px; background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 999px; font-weight: 500;">Bấm là vào ngay</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <button type="button" onclick="quickLogin('admin', 'admin123')" class="btn" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                    Admin
+                </button>
+                <button type="button" onclick="quickLogin('nhanvien', 'agent123')" class="btn" style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                    CSKH
+                </button>
+                <button type="button" onclick="quickLogin('khachhang', 'customer123')" class="btn" style="background: #faf5ff; border: 1px solid #e9d5ff; color: #7e22ce; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                    Khách hàng
+                </button>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; text-align: center;">
+                Tự động điền mật khẩu và chuyển thẳng vào bảng điều khiển tương ứng
+            </div>
+        </div>
+
+        <script>
+            function quickLogin(username, password) {
+                const form = document.querySelector('form[action="/login"]');
+                const userField = document.querySelector('input[name="username_or_email"]');
+                const passField = document.querySelector('input[name="password"]');
+                if (form && userField && passField) {
+                    userField.value = username;
+                    passField.value = password;
+                    form.submit();
+                }
+            }
+        </script>
+
+        <div style="margin-top: 20px; text-align: center; font-size: 13px;">
+            Chưa có tài khoản? <a href="/register" style="color: var(--primary); font-weight: 600;">Đăng ký ngay</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

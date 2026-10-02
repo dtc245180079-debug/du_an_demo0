@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Hộp Thư Đa Kênh Hợp Nhất (Omnichannel Inbox) - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">HỘP THƯ ĐA KÊNH HỢP NHẤT</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Quản lý hội thoại tập trung từ Zalo OA, Facebook Messenger, Instagram, Live Chat Web và Email
+        </p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        <a href="/webchat/embed" target="_blank" class="btn btn-secondary">Mở Webchat Widget Nhúng</a>
+    </div>
+</div>
+
+<!-- Channel Filter Tabs -->
+<div class="filter-bar" style="padding: 10px 16px; margin-bottom: 16px;">
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <span style="font-weight: 600; font-size: 13px; margin-right: 5px;">Kênh:</span>
+        <a href="/inbox?channel=all" class="btn btn-sm {% if not current_channel or current_channel == 'all' %}btn-primary{% else %}btn-secondary{% endif %}">Tất cả</a>
+        <a href="/inbox?channel=zalo" class="btn btn-sm {% if current_channel == 'zalo' %}btn-primary{% else %}btn-secondary{% endif %}">Zalo OA</a>
+        <a href="/inbox?channel=facebook" class="btn btn-sm {% if current_channel == 'facebook' %}btn-primary{% else %}btn-secondary{% endif %}">Facebook</a>
+        <a href="/inbox?channel=instagram" class="btn btn-sm {% if current_channel == 'instagram' %}btn-primary{% else %}btn-secondary{% endif %}">Instagram</a>
+        <a href="/inbox?channel=webchat" class="btn btn-sm {% if current_channel == 'webchat' %}btn-primary{% else %}btn-secondary{% endif %}">Webchat</a>
+        <a href="/inbox?channel=email" class="btn btn-sm {% if current_channel == 'email' %}btn-primary{% else %}btn-secondary{% endif %}">Email</a>
+    </div>
+</div>
+
+<!-- Inbox Layout -->
+<div class="inbox-layout">
+    <!-- Left: Conversation List -->
+    <div class="inbox-sidebar">
+        <div style="padding: 14px 16px; border-bottom: 1px solid var(--border-color); font-weight: 700; font-size: 14px; background: #f8fafc;">
+            Hội Thoại Gần Đây ({{ conversations|length }})
+        </div>
+        <div class="inbox-list" id="inbox-conv-list">
+            {% if conversations %}
+                {% for conv in conversations %}
+                <div class="inbox-item {% if active_conv_id == conv.conversation_id %}active{% endif %}"
+                     onclick="loadConversation('{{ conv.conversation_id }}', '{{ conv.channel }}', '{{ conv.sender_name }}')">
+                    <div class="inbox-item-header">
+                        <strong>{{ conv.sender_name }}</strong>
+                        <span class="badge badge-channel badge-{{ conv.channel }}">{{ conv.channel }}</span>
+                    </div>
+                    <div style="font-size: 13px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {% if conv.direction == 'outbound' %}<em>Bạn:</em> {% endif %}{{ conv.last_message }}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        <span>{{ conv.created_at.strftime("%H:%M %d/%m") if conv.created_at else '' }}</span>
+                        <span>{{ conv.msg_count }} tin</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                    Không có hội thoại nào trên kênh này.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right: Active Chat Area -->
+    <div class="inbox-chat-column">
+        <div class="feed-header" style="background: white; flex-shrink: 0;" id="active-chat-header">
+            <div>
+                <strong id="active-sender-name" style="font-size: 16px;">
+                    {{ active_conv.sender_name if active_conv else 'Chọn một hội thoại để trả lời' }}
+                </strong>
+                <span id="active-channel-badge" class="badge badge-channel badge-{{ active_conv.channel if active_conv else 'web' }}">
+                    {{ active_conv.channel if active_conv else '' }}
+                </span>
+            </div>
+            <div id="active-conv-id" style="font-size: 12px; color: var(--text-muted);">
+                {{ active_conv_id or '' }}
+            </div>
+        </div>
+
+        <!-- Messages Feed -->
+        <div class="feed-messages" id="inbox-feed-messages" style="flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+            {% if messages %}
+                {% for msg in messages %}
+                <div class="feed-msg {% if msg.direction == 'outbound' %}msg-agent{% else %}msg-customer{% endif %}">
+                    <div class="msg-meta">
+                        <strong>{{ msg.sender_name }}</strong>
+                        <span>{{ msg.created_at.strftime("%H:%M %d/%m") if msg.created_at else '' }}</span>
+                    </div>
+                    <div style="white-space: pre-wrap;">{{ msg.content }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; margin-top: 150px; color: var(--text-muted);">
+                    Vui lòng chọn một cuộc trò chuyện từ danh sách bên trái.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Outbound Reply Box -->
+        <div style="padding: 14px 16px; border-top: 1px solid var(--border-color); background: white; flex-shrink: 0; z-index: 10;">
+            <form id="inbox-reply-form" onsubmit="sendInboxReply(event)">
+                <input type="hidden" id="reply-conversation-id" value="{{ active_conv_id or '' }}">
+                <input type="hidden" id="reply-channel" value="{{ active_conv.channel if active_conv else 'webchat' }}">
+                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                    <textarea id="inbox-reply-input" class="form-control" rows="2" placeholder="Nhập câu trả lời gửi cho khách qua kênh này (Enter để gửi, Shift+Enter xuống dòng)..." required style="resize: none;"></textarea>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 22px; height: 52px; white-space: nowrap; font-weight: 600;">
+                        Gửi tin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Customer & Phone Sales Sidebar -->
+    <div class="inbox-consultation-sidebar">
+        <!-- Customer Info -->
+        <div style="background: white; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="font-size: 13px;">Hồ Sơ Khách Hàng</strong>
+                {% if linked_customer %}
+                <a href="/customers/{{ linked_customer.id }}" target="_blank" style="font-size: 11px; color: var(--primary);">Customer 360 ↗</a>
+                {% endif %}
+            </div>
+            {% if linked_customer %}
+                <div style="font-size: 13px; font-weight: 600;">{{ linked_customer.full_name }}</div>
+                <div style="font-size: 12px; color: var(--text-muted);">ĐT: {{ linked_customer.phone or 'Chưa có SĐT' }}</div>
+                <div style="margin-top: 4px;">
+                    <span class="badge" style="background:#e8f0fe; color:#1a73e8; font-size: 10px;">{{ linked_customer.member_rank or 'Đồng' }}</span>
+                </div>
+            {% else %}
+                <div style="font-size: 12px; color: var(--text-muted);">
+                    Khách: <strong>{{ active_conv.sender_name if active_conv else 'Khách lạ' }}</strong>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Phone Recommendation & In-Chat Product Card -->
+        <div style="background: white; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px;">
+            <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--primary);">
+                Gửi Thẻ Điện Thoại Vào Chat
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+                <select id="inbox-product-picker" class="form-control" style="font-size: 12px; padding: 6px;">
+                    <option value="">-- Chọn máy cần gửi khách --</option>
+                    {% for p in phone_catalog %}
+                    <option value="{{ p.id }}">
+                        {{ p.name }} - {{ "{:,.0f}".format(p.promo_price or p.listed_price) }} ₫ (Tồn: {{ p.stock_quantity }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" onclick="sendProductCardToChat()" style="width: 100%; justify-content: center; font-size: 12px;">
+                Gửi Thẻ Máy Này Vào Chat
+            </button>
+        </div>
+
+        <!-- Consultation Preferences -->
+        <div style="background: white; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <strong style="font-size: 13px;">Nhu Cầu Tư Vấn</strong>
+                {% if linked_customer %}
+                <a href="/consultation?customer_id={{ linked_customer.id }}" target="_blank" style="font-size: 11px; color: var(--primary);">Khảo sát ↗</a>
+                {% endif %}
+            </div>
+            {% if customer_pref %}
+                <div style="font-size: 12px; line-height: 1.5; color: #4b5563;">
+                    <div>• <strong>Ngân sách:</strong> {{ "{:,.0f}".format(customer_pref.budget_min or 0) }} - {{ "{:,.0f}".format(customer_pref.budget_max or 0) }} ₫</div>
+                    <div>• <strong>Mục đích:</strong> {{ customer_pref.primary_usage }}</div>
+                    <div>• <strong>Ưa thích:</strong> {{ customer_pref.preferred_brands or 'Tất cả' }}</div>
+                    <div>• <strong>Tiêu chí:</strong> {{ customer_pref.key_criteria }}</div>
+                </div>
+            {% else %}
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Chưa có dữ liệu khảo sát nhu cầu.</p>
+            {% endif %}
+        </div>
+
+        <!-- Recent Purchases & Orders -->
+        <div style="background: white; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; flex: 1; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <strong style="font-size: 13px;">Đơn Hàng Gần Đây</strong>
+                {% if linked_customer %}
+                <a href="/quotations/create?customer_id={{ linked_customer.id }}" target="_blank" class="btn btn-sm btn-secondary" style="padding: 2px 6px; font-size: 10px;">Lập báo giá</a>
+                {% endif %}
+            </div>
+            {% if recent_orders %}
+                {% for o in recent_orders %}
+                <div style="font-size: 11px; border-bottom: 1px dashed var(--border-color); padding: 6px 0;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                        <span>{{ o.order_code }}</span>
+                        <span style="color: var(--success);">{{ "{:,.0f}".format(o.total_amount) }} ₫</span>
+                    </div>
+                    <div style="color: var(--text-muted);">{{ o.items_summary or (o.shipping_carrier ~ ' - ' ~ o.shipping_status) }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Chưa có lịch sử mua hàng.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function loadConversation(convId, channel, senderName) {
+        window.location.href = `/inbox?conv_id=${convId}&channel={{ current_channel or 'all' }}`;
+    }
+
+    async function sendInboxReply(e) {
+        e.preventDefault();
+        const convId = document.getElementById("reply-conversation-id").value;
+        const channel = document.getElementById("reply-channel").value;
+        const input = document.getElementById("inbox-reply-input");
+        const content = input.value.trim();
+        if (!content || !convId) return;
+
+        try {
+            const res = await fetch("/api/inbox/reply", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    conversation_id: convId,
+                    channel: channel,
+                    content: content
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                input.value = "";
+                // Thêm tin nhắn vào feed
+                const feed = document.getElementById("inbox-feed-messages");
+                const msgDiv = document.createElement("div");
+                msgDiv.className = "feed-msg msg-agent";
+                msgDiv.innerHTML = `
+                    <div class="msg-meta">
+                        <strong>{{ session.get('full_name') }}</strong>
+                        <span>Vừa xong</span>
+                    </div>
+                    <div style="white-space: pre-wrap;">${content}</div>
+                `;
+                feed.appendChild(msgDiv);
+                feed.scrollTop = feed.scrollHeight;
+            } else {
+                alert("Lỗi gửi tin: " + data.message);
+            }
+        } catch (err) {
+            alert("Không thể kết nối tới máy chủ.");
+        }
+    }
+
+    async function sendProductCardToChat() {
+        const prodId = document.getElementById("inbox-product-picker").value;
+        const convId = document.getElementById("reply-conversation-id").value;
+        const channel = document.getElementById("reply-channel").value;
+        if (!prodId) {
+            alert("Vui lòng chọn mẫu điện thoại trong danh sách trước khi gửi.");
+            return;
+        }
+        if (!convId) {
+            alert("Vui lòng chọn cuộc hội thoại cần gửi.");
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/inbox/send-product-card", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    conversation_id: convId,
+                    channel: channel,
+                    product_id: parseInt(prodId)
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // Thêm thẻ sản phẩm vào feed
+                const feed = document.getElementById("inbox-feed-messages");
+                const msgDiv = document.createElement("div");
+                msgDiv.className = "feed-msg msg-agent";
+                msgDiv.innerHTML = `
+                    <div class="msg-meta">
+                        <strong>{{ session.get('full_name') }}</strong>
+                        <span>Vừa xong</span>
+                    </div>
+                    <div style="white-space: pre-wrap; font-family: inherit;">${data.card_message}</div>
+                `;
+                feed.appendChild(msgDiv);
+                feed.scrollTop = feed.scrollHeight;
+            } else {
+                alert("Lỗi gửi thẻ: " + data.message);
+            }
+        } catch (err) {
+            alert("Không thể kết nối máy chủ.");
+        }
+    }
+
+    const feed = document.getElementById("inbox-feed-messages");
+    if (feed) {
+        setTimeout(() => {
+            feed.scrollTop = feed.scrollHeight;
+        }, 100);
+    }
+
+    // Nhấn Enter để gửi tin nhắn ngay lập tức (Shift + Enter để xuống dòng)
+    const replyInput = document.getElementById("inbox-reply-input");
+    if (replyInput) {
+        replyInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById("inbox-reply-form").dispatchEvent(new Event("submit", { cancelable: true }));
+            }
+        });
+    }
+</script>
+{% endblock %}

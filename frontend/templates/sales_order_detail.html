@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Chi Tiết Đơn Hàng {{ order.order_code }} - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <a href="/sales-orders" style="text-decoration: none; color: var(--text-muted);">Quay lại Danh sách đơn hàng</a>
+            <span class="badge" style="background: #e0e7ff; color: #3730a3; font-weight: 700;">{{ order.order_code }}</span>
+            <span class="badge badge-status badge-{{ order.status }}">
+                {% if order.status == 'new' %}Mới tạo
+                {% elif order.status == 'confirmed' %}Đã xác nhận
+                {% elif order.status == 'processing' %}Đang xử lý
+                {% elif order.status == 'shipping' %}Đang giao hàng
+                {% elif order.status == 'completed' %}Đã hoàn tất & BH
+                {% elif order.status == 'cancelled' %}Đã hủy
+                {% elif order.status == 'returned' %}Đổi trả
+                {% else %}{{ order.status }}{% endif %}
+            </span>
+        </div>
+        <h1 class="page-title">Đơn Hàng: {{ order.order_code }}</h1>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        {% if order.customer_id %}
+        <a href="/customers/{{ order.customer_id }}" class="btn btn-secondary">Xem Customer 360</a>
+        {% endif %}
+        {% if order.quote_id %}
+        <a href="/quotations" class="btn btn-secondary">Xem Báo giá gốc</a>
+        {% endif %}
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- Left Column: Order Items, Customer Info & Status Timeline -->
+    <div>
+        <!-- Order Items Card -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span>Danh Sách Thiết Bị & Sản Phẩm</span>
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th style="text-align: right;">Đơn giá</th>
+                            <th style="text-align: center;">Số lượng</th>
+                            <th style="text-align: right;">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order['items'] %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.name }}</strong>
+                                {% if item.product_id %}
+                                <div style="font-size: 12px; color: var(--text-muted);">
+                                    <a href="/products/{{ item.product_id }}" target="_blank" style="color: var(--primary);">Xem thông số kỹ thuật ↗</a>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">{{ "{:,.0f}".format(item.unit_price or item.promo_price or item.listed_price or 0) }} ₫</td>
+                            <td style="text-align: center; font-weight: 600;">{{ item.qty }}</td>
+                            <td style="text-align: right; font-weight: 700; color: var(--primary);">
+                                {{ "{:,.0f}".format(item.subtotal or ((item.unit_price or item.promo_price or 0) * item.qty)) }} ₫
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" style="text-align: right; font-weight: 600;">Tổng tiền hàng:</td>
+                            <td style="text-align: right; font-weight: 600;">{{ "{:,.0f}".format(order.total_amount) }} ₫</td>
+                        </tr>
+                        {% if order.discount_amount and order.discount_amount > 0 %}
+                        <tr>
+                            <td colspan="3" style="text-align: right; font-weight: 600; color: #059669;">Giảm giá khuyến mãi:</td>
+                            <td style="text-align: right; font-weight: 600; color: #059669;">-{{ "{:,.0f}".format(order.discount_amount) }} ₫</td>
+                        </tr>
+                        {% endif %}
+                        <tr style="font-size: 16px; background: #f8fafc;">
+                            <td colspan="3" style="text-align: right; font-weight: 700;">TỔNG THANH TOÁN (FINAL):</td>
+                            <td style="text-align: right; font-weight: 700; color: var(--danger);">
+                                {{ "{:,.0f}".format(order.final_amount) }} ₫
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Customer & Delivery Info -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span>Thông Tin Giao Nhận & Thanh Toán</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
+                <div>
+                    <div style="color: var(--text-muted); font-size: 12px;">Người nhận hàng:</div>
+                    <strong>{{ order.receiver_name or order.customer_name }}</strong>
+                    <div style="margin-top: 4px;">ĐT: {{ order.receiver_phone or order.customer_phone }}</div>
+                    <div style="margin-top: 4px; color: #4b5563;">Địa chỉ: {{ order.shipping_address or 'Nhận tại cửa hàng' }}</div>
+                </div>
+                <div>
+                    <div style="color: var(--text-muted); font-size: 12px;">Đơn vị vận chuyển:</div>
+                    <strong>{{ order.shipping_carrier or 'GHN' }}</strong>
+                    <div style="margin-top: 4px; font-family: monospace;">Mã vận đơn: <strong>{{ order.shipping_code or 'Đang cập nhật' }}</strong></div>
+                    <div style="margin-top: 4px;">
+                        Thanh toán: <span class="badge" style="background:#e8f0fe; color:#1a73e8; text-transform: uppercase;">{{ order.payment_method }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Status History & Audit Timeline -->
+        <div class="card">
+            <div class="card-title">
+                <span>Lịch Sử Thay Đổi Trạng Thái & Người Thực Hiện</span>
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Trạng thái cũ → Mới</th>
+                            <th>Người cập nhật</th>
+                            <th>Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if history %}
+                        {% for h in history %}
+                        <tr>
+                            <td style="font-size: 12px; color: var(--text-muted);">
+                                {{ h.created_at.strftime("%d/%m/%Y %H:%M") if h.created_at else '' }}
+                            </td>
+                            <td>
+                                <span class="badge badge-status badge-{{ h.old_status or 'none' }}">{{ h.old_status or 'Khởi tạo' }}</span>
+                                →
+                                <span class="badge badge-status badge-{{ h.new_status }}">{{ h.new_status }}</span>
+                            </td>
+                            <td><strong>{{ h.changed_by_name or 'Hệ thống' }}</strong></td>
+                            <td style="font-size: 13px; color: #4b5563;">{{ h.notes or '' }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 15px;">
+                                Chưa có cập nhật trạng thái tiếp theo.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Actions & Electronic Warranty Activation -->
+    <div>
+        {% if session.get('role') in ['agent', 'admin'] %}
+        <!-- Update Status Box -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span>Cập Nhật Trạng Thái Đơn</span>
+            </div>
+            <form method="POST" action="/sales-orders/{{ order.id }}/status">
+                <div class="form-group">
+                    <label>Trạng thái mới:</label>
+                    <select name="status" class="form-control" required>
+                        <option value="new" {% if order.status == 'new' %}selected{% endif %}>Mới tạo</option>
+                        <option value="confirmed" {% if order.status == 'confirmed' %}selected{% endif %}>Đã xác nhận đơn</option>
+                        <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Đang xử lý & Đóng gói</option>
+                        <option value="shipping" {% if order.status == 'shipping' %}selected{% endif %}>Đang giao hàng</option>
+                        <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Hoàn tất đơn hàng</option>
+                        <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Hủy đơn</option>
+                        <option value="returned" {% if order.status == 'returned' %}selected{% endif %}>Đổi trả thiết bị</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Ghi chú thao tác:</label>
+                    <input type="text" name="notes" class="form-control" placeholder="VD: Khách đã thanh toán, đã bàn giao shipper...">
+                </div>
+
+                <button type="submit" class="btn btn-save" style="width: 100%; justify-content: center;">
+                    Lưu Cập Nhật
+                </button>
+            </form>
+        </div>
+
+        <!-- Electronic Warranty Activation Box -->
+        <div class="card">
+            <div class="card-title">
+                <span>Kích Hoạt Bảo Hành Điện Tử</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
+                Nhập số IMEI / Serial chính thức của máy giao cho khách để kích hoạt sổ bảo hành điện tử chính hãng.
+            </p>
+
+            <form method="POST" action="/warranties/create">
+                <input type="hidden" name="order_id" value="{{ order.id }}">
+                <input type="hidden" name="customer_id" value="{{ order.customer_id or '' }}">
+                <input type="hidden" name="customer_name" value="{{ order.customer_name }}">
+                <input type="hidden" name="customer_phone" value="{{ order.customer_phone }}">
+                
+                <div class="form-group">
+                    <label>Chọn thiết bị xuất bán:</label>
+                    <select name="product_id" class="form-control" required id="warr-product-select">
+                        {% for it in order['items'] %}
+                        <option value="{{ it.product_id or 0 }}" data-name="{{ it.name }}">
+                            {{ it.name }} (x{{ it.qty }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Số IMEI / Serial máy (15 ký tự):</label>
+                    <input type="text" name="imei_serial" class="form-control" required placeholder="358941098273645" style="font-family: monospace;">
+                </div>
+
+                <div class="form-group">
+                    <label>Gói bảo hành áp dụng:</label>
+                    <select name="warranty_package" class="form-control">
+                        <option value="Bảo hành tiêu chuẩn chính hãng 12 tháng">Bảo hành tiêu chuẩn chính hãng 12 tháng</option>
+                        <option value="Bảo hành VIP 1 đổi 1 trong 12 tháng">Bảo hành VIP 1 đổi 1 trong 12 tháng</option>
+                        <option value="Bảo hành rơi vỡ, vào nước 12 tháng">Bảo hành rơi vỡ, vào nước 12 tháng</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Thời hạn (tháng):</label>
+                    <input type="number" name="months" class="form-control" value="12" min="1" max="36">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    Kích Hoạt Sổ Bảo Hành Ngay
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

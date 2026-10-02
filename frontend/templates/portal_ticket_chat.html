@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Trao đổi Ticket {{ ticket.ticket_code }} - Cổng Khách Hàng{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <a href="/portal" style="text-decoration: none; color: var(--text-muted);">Quay lại Cổng hỗ trợ</a>
+            <span class="badge status-{{ ticket.status }}">
+                {% if ticket.status == 'open' %}Mới tiếp nhận
+                {% elif ticket.status == 'in_progress' %}Đang xử lý
+                {% elif ticket.status == 'resolved' %}Đã giải quyết
+                {% elif ticket.status == 'closed' %}Đã đóng
+                {% endif %}
+            </span>
+        </div>
+        <h1 class="page-title">{{ ticket.ticket_code }}: {{ ticket.subject }}</h1>
+    </div>
+
+    {% if ticket.status in ['resolved', 'closed'] %}
+    <div>
+        <a href="/portal/survey/{{ ticket.id }}" class="btn btn-warning">Đánh giá chất lượng phục vụ</a>
+    </div>
+    {% endif %}
+</div>
+
+<div style="max-width: 850px; margin: 0 auto;">
+    <div class="feed-container">
+        <div class="feed-header">
+            <div>
+                <strong>Trao Đổi Với Chuyên Viên CSKH</strong>
+                {% if ticket.assigned_agent_name %}
+                <span style="font-size: 13px; color: var(--text-muted); margin-left: 8px;">(Hỗ trợ bởi: <strong>{{ ticket.assigned_agent_name }}</strong>)</span>
+                {% endif %}
+            </div>
+            <span style="font-size: 12px; color: var(--text-muted);">Kênh: {{ ticket.channel|upper }}</span>
+        </div>
+
+        <div class="feed-messages" id="portal-feed-messages">
+            {% for msg in messages %}
+            <div class="feed-msg {% if msg.sender_type == 'customer' %}msg-agent{% elif msg.sender_type == 'system' %}msg-system{% else %}msg-customer{% endif %}"
+                 style="{% if msg.sender_type == 'customer' %}align-self: flex-end;{% elif msg.sender_type == 'system' %}align-self: center;{% else %}align-self: flex-start;{% endif %}">
+                <div class="msg-meta">
+                    <strong>{{ msg.sender_name }}</strong>
+                    <span>{{ msg.created_at.strftime("%H:%M %d/%m") if msg.created_at else '' }}</span>
+                </div>
+                <div style="white-space: pre-wrap;">{{ msg.message }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Chat input for customer -->
+        {% if ticket.status != 'closed' %}
+        <div style="padding: 16px; border-top: 1px solid var(--border-color); background: white;">
+            <form method="POST" action="/portal/ticket/{{ ticket.id }}">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" name="message" class="form-control" placeholder="Nhập tin nhắn phản hồi của bạn cho chuyên viên..." required autocomplete="off">
+                    <button type="submit" class="btn btn-primary" style="padding: 0 20px;">
+                        Gửi
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        <div style="padding: 16px; text-align: center; background: #f8fafc; color: var(--text-muted); font-size: 13px;">
+            Phiếu hỗ trợ này đã được đóng. Nếu bạn có yêu cầu mới, vui lòng tạo phiếu hỗ trợ khác.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const feed = document.getElementById("portal-feed-messages");
+    if (feed) feed.scrollTop = feed.scrollHeight;
+</script>
+{% endblock %}

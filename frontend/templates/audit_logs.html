@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Nhật Ký Kiểm Toán (Audit Logs) - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">NHẬT KÝ KIỂM TOÁN HỆ THỐNG (AUDIT LOGS)</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Ghi nhận vết mọi thao tác quan trọng của quản trị viên, nhân viên và các webhook tự động
+        </p>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 60px;">ID</th>
+                <th style="width: 160px;">Thời Gian</th>
+                <th style="width: 140px;">Người Thực Hiện</th>
+                <th style="width: 150px;">Hành Động</th>
+                <th style="width: 130px;">Đối Tượng</th>
+                <th>Chi Tiết Thao Tác</th>
+                <th style="width: 120px;">IP Address</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if logs %}
+            {% for l in logs %}
+            <tr>
+                <td>#{{ l.id }}</td>
+                <td style="font-size: 12px; color: var(--text-muted);">
+                    {{ l.created_at.strftime("%d/%m/%Y %H:%M:%S") if l.created_at else '' }}
+                </td>
+                <td>
+                    <strong>{{ l.username or 'SYSTEM' }}</strong>
+                </td>
+                <td>
+                    <span class="badge" style="background:#f1f3f4; color:#333; font-family: monospace;">
+                        {{ l.action }}
+                    </span>
+                </td>
+                <td>
+                    <span style="font-size: 12px; color: var(--text-muted);">
+                        {{ l.target_type }} {% if l.target_id %}#{{ l.target_id }}{% endif %}
+                    </span>
+                </td>
+                <td style="font-size: 13px; color: #374151;">{{ l.details }}</td>
+                <td style="font-family: monospace; font-size: 12px;">{{ l.ip_address or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">Chưa có bản ghi nhật ký kiểm toán nào.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

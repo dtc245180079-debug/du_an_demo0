@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Cấu Hình Tự Động Hóa & Phản Hồi - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">CẤU HÌNH TỰ ĐỘNG HÓA & PHẢN HỒI THEO KÊNH</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Thiết lập kịch bản tự động phản hồi khách hàng: Lời chào ban đầu, Ngoài giờ làm việc và Khi nhân viên đang bận
+        </p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- Left: Existing Auto-Replies Table & Edit Form -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Danh Sách Kịch Bản Phản Hồi Đang Bật</span>
+            </div>
+
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kênh Áp Dụng</th>
+                            <th>Loại Kịch Bản</th>
+                            <th>Nội Dung Phản Hồi Tự Động</th>
+                            <th>Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if auto_replies %}
+                        {% for r in auto_replies %}
+                        <tr>
+                            <td>
+                                <span class="badge" style="background:#e8f0fe; color:#1a73e8; text-transform: uppercase;">
+                                    {{ r.channel }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if r.trigger_type == 'greeting' %}Lời chào khách
+                                {% elif r.trigger_type == 'out_of_office' %}Ngoài giờ làm
+                                {% elif r.trigger_type == 'busy' %}Tổng đài bận
+                                {% else %}{{ r.trigger_type }}
+                                {% endif %}
+                            </td>
+                            <td style="font-size: 13px; color: #374151;">{{ r.message }}</td>
+                            <td>
+                                {% if r.is_active %}
+                                    <span class="badge" style="background:#e6f4ea; color:#137333;">Đang bật</span>
+                                {% else %}
+                                    <span class="badge" style="background:#f1f3f4; color:#5f6368;">Tắt</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">Chưa cấu hình kịch bản tự động nào.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Automation Settings Form -->
+        <div class="card">
+            <div class="card-title">
+                <span>Thêm Hoặc Cập Nhật Kịch Bản Tự Động</span>
+            </div>
+            <form method="POST" action="/api/automation/save">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Kênh áp dụng:</label>
+                        <select name="channel" class="form-control">
+                            <option value="all">Tất cả các kênh</option>
+                            <option value="zalo">Zalo OA</option>
+                            <option value="facebook">Facebook Messenger</option>
+                            <option value="instagram">Instagram Direct</option>
+                            <option value="webchat">Webchat Trực Tuyến</option>
+                            <option value="email">Email Hỗ Trợ</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Loại sự kiện kích hoạt (Trigger):</label>
+                        <select name="trigger_type" class="form-control">
+                            <option value="greeting">Lời chào khi khách nhắn tin đầu tiên</option>
+                            <option value="out_of_office">Tin nhắn ngoài giờ làm việc (Sau 22h & Trước 8h)</option>
+                            <option value="busy">Tin nhắn khi chuyên viên đang bận</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Nội dung phản hồi tự động gửi tới khách:</label>
+                    <textarea name="message" rows="4" class="form-control" placeholder="Nhập nội dung mẫu phản hồi tự động..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="is_active" value="1" checked> Kích hoạt kịch bản này ngay lập tức
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-save">Lưu Cấu Hình Phản Hồi</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Automation Rules Info -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Cơ Chế Chống Lặp (Idempotency)</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                Hệ thống tự động theo dõi tính <strong>Idempotent</strong>:
+            </p>
+            <ul style="font-size: 13px; color: #374151; padding-left: 20px; line-height: 1.7;">
+                <li>Mỗi webhook từ Zalo OA, FB, GHN, GHTK đều có <code>event_id</code> duy nhất để loại bỏ sự kiện trùng lặp.</li>
+                <li>Khảo sát CSAT / NPS chỉ được gửi duy nhất 1 lần khi đóng ticket thông qua khóa <code>survey_ticket_{id}</code>.</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>Khung Giờ Làm Việc Mặc Định</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted);">
+                • <strong>Ban ngày:</strong> 08:00 - 22:00 (Nhân viên CSKH trực)<br>
+                • <strong>Ban đêm:</strong> 22:01 - 07:59 (Tự động kích hoạt kịch bản Ngoài giờ)
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

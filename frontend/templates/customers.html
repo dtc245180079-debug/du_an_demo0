@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Hồ sơ Khách hàng Customer 360 - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">DANH SÁCH KHÁCH HÀNG (CUSTOMER 360)</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Hợp nhất thông tin đa kênh (Web, SĐT, Zalo OA, Facebook) và lịch sử giao dịch toàn diện
+        </p>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="GET" action="/customers" class="search-box">
+        <input type="text" name="keyword" placeholder="Tìm theo họ tên, số điện thoại, email, Zalo ID hoặc Facebook ID..." value="{{ keyword if keyword else '' }}">
+        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+        {% if keyword %}
+        <a href="/customers" class="btn btn-secondary">Đặt lại</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 60px;">ID</th>
+                <th style="width: 200px;">Họ và Tên</th>
+                <th style="width: 140px;">Số Điện Thoại</th>
+                <th>Email</th>
+                <th style="width: 120px;">Hạng TV</th>
+                <th style="width: 160px;">Kênh liên kết</th>
+                <th style="width: 140px; text-align: center;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if customers %}
+            {% for c in customers %}
+            <tr>
+                <td><strong>#{{ c.id }}</strong></td>
+                <td>
+                    <strong><a href="/customers/{{ c.id }}" style="color: var(--primary); text-decoration: none;">{{ c.full_name }}</a></strong>
+                </td>
+                <td>
+                    {% if c.phone %}
+                        <span>{{ c.phone }}</span>
+                        <button class="btn btn-sm btn-softphone" style="padding: 2px 5px; font-size: 10px; margin-left: 4px;" onclick="startSoftphoneCall('{{ c.phone }}')">Gọi</button>
+                    {% else %}
+                        <span style="color: var(--text-muted); font-size: 12px;">Chưa có</span>
+                    {% endif %}
+                </td>
+                <td>{{ c.email or '—' }}</td>
+                <td>
+                    <span class="badge" style="background:#fef3c7; color:#92400e;">
+                        {{ c.member_rank or 'Thành viên' }}
+                    </span>
+                </td>
+                <td>
+                    {% if c.zalo_id %}<span class="badge badge-zalo" title="Zalo ID: {{ c.zalo_id }}">Zalo</span>{% endif %}
+                    {% if c.fb_id %}<span class="badge badge-facebook" title="FB ID: {{ c.fb_id }}">FB</span>{% endif %}
+                </td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <a href="/customers/{{ c.id }}" class="btn btn-sm btn-primary">Customer 360</a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                    Không tìm thấy khách hàng nào phù hợp với từ khóa "{{ keyword }}".
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

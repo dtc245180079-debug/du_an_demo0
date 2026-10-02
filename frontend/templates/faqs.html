@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Dữ liệu Hỗ trợ Khách hàng - FAQs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">HỆ THỐNG QUẢN LÝ DỮ LIỆU HỖ TRỢ KHÁCH HÀNG</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Cơ sở tri thức (Knowledge Base) phục vụ phản hồi khách hàng và cung cấp ngữ cảnh cho AI RAG
+        </p>
+    </div>
+    {% if session.get('role') in ['agent', 'admin'] %}
+    <div class="toolbar">
+        <a href="/add" class="btn btn-add">Thêm dữ liệu hỗ trợ</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Thanh tìm kiếm -->
+<div class="filter-bar">
+    <form method="GET" action="/" class="search-box">
+        <input type="text" name="keyword" placeholder="Tìm sự cố, biểu hiện, chính sách, thương hiệu..."
+            value="{{ keyword if keyword else '' }}">
+        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+        {% if keyword %}
+        <a href="/" class="btn btn-secondary">Đặt lại</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Bảng dữ liệu -->
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">ID</th>
+                <th style="width: 180px;">Tên sự cố</th>
+                <th style="width: 110px;">Danh mục</th>
+                <th style="width: 100px;">Thương hiệu</th>
+                <th>Biểu hiện / Câu hỏi</th>
+                <th>Cách xử lý / Chính sách</th>
+                {% if session.get('role') in ['agent', 'admin'] %}
+                <th style="width: 140px; text-align: center;">Thao tác</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% if faqs %}
+            {% for f in faqs %}
+            <tr>
+                <td><strong>#{{ f.id }}</strong></td>
+                <td><strong>{{ f.issue_name }}</strong></td>
+                <td><span class="badge" style="background:#e8f0fe; color:#1a73e8;">{{ f.category }}</span></td>
+                <td><span class="badge" style="background:#f1f3f4; color:#333;">{{ f.brand }}</span></td>
+                <td style="color: #444;">{{ f.symptom }}</td>
+                <td style="color: #222;">{{ f.solution }}</td>
+                {% if session.get('role') in ['agent', 'admin'] %}
+                <td style="text-align: center; white-space: nowrap;">
+                    <a href="/edit/{{ f.id }}" class="btn btn-sm btn-edit">Sửa</a>
+                    <a href="/delete/{{ f.id }}" class="btn btn-sm btn-delete"
+                        onclick="return confirm('Bạn có chắc muốn xóa dữ liệu này?');">Xóa</a>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="{% if session.get('role') in ['agent', 'admin'] %}7{% else %}6{% endif %}" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                    Không tìm thấy dữ liệu nào phù hợp với từ khóa "{{ keyword }}".
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

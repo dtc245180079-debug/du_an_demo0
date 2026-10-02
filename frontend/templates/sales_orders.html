@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Đơn Hàng Bán Trực Tiếp - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">QUẢN LÝ ĐƠN HÀNG BÁN ĐIỆN THOẠI</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Theo dõi vòng đời đơn hàng từ tiếp nhận, xác nhận, xử lý, giao hàng tới hoàn tất và kích hoạt bảo hành
+        </p>
+    </div>
+    <div class="toolbar">
+        <a href="/sales-orders/create" class="btn btn-add">Tạo đơn hàng mới</a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 130px;">Mã Đơn</th>
+                <th style="width: 170px;">Khách Hàng</th>
+                <th>Sản Phẩm Đã Mua</th>
+                <th style="width: 140px;">Tổng Đơn</th>
+                <th style="width: 140px;">Vận Chuyển</th>
+                <th style="width: 150px;">Trạng Thái Đơn</th>
+                <th style="width: 130px;">Nhân Viên Bán</th>
+                <th style="width: 130px; text-align: center;">Thao Tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if orders %}
+            {% for o in orders %}
+            <tr>
+                <td><strong>{{ o.order_code }}</strong></td>
+                <td>
+                    <div><strong>{{ o.customer_name }}</strong></div>
+                    <small style="color: var(--text-muted);">ĐT: {{ o.customer_phone }}</small>
+                </td>
+                <td>
+                    <ul style="margin: 0; padding-left: 16px; font-size: 13px;">
+                        {% for it in o['items'] %}
+                        <li>{{ it.name }} x{{ it.qty }}: <strong>{{ "{:,.0f}".format(it.subtotal) }} ₫</strong></li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    <div style="font-size: 16px; font-weight: 700; color: var(--success);">
+                        {{ "{:,.0f}".format(o.final_amount) }} ₫
+                    </div>
+                    {% if o.discount_amount and o.discount_amount > 0 %}
+                    <small style="color: #059669;">Giảm: -{{ "{:,.0f}".format(o.discount_amount) }} ₫</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <div><strong>{{ o.shipping_code }}</strong></div>
+                    <small style="color: var(--text-muted);">{{ o.shipping_carrier }}</small>
+                </td>
+                <td>
+                    <form method="POST" action="/sales-orders/{{ o.id }}/status" style="margin: 0;">
+                        <select name="status" onchange="this.form.submit()" style="font-size: 11px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; font-weight: 600;">
+                            <option value="new" {% if o.status == 'new' %}selected{% endif %}>Mới tạo</option>
+                            <option value="confirmed" {% if o.status == 'confirmed' %}selected{% endif %}>Đã xác nhận</option>
+                            <option value="processing" {% if o.status == 'processing' %}selected{% endif %}>Đang xử lý</option>
+                            <option value="shipping" {% if o.status == 'shipping' %}selected{% endif %}>Đang giao hàng</option>
+                            <option value="completed" {% if o.status == 'completed' %}selected{% endif %}>Hoàn tất & Kích hoạt BH</option>
+                            <option value="cancelled" {% if o.status == 'cancelled' %}selected{% endif %}>Đã hủy</option>
+                            <option value="returned" {% if o.status == 'returned' %}selected{% endif %}>Đổi trả</option>
+                        </select>
+                    </form>
+                </td>
+                <td><small>{{ o.agent_name }}</small></td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <a href="/sales-orders/{{ o.id }}" class="btn btn-sm btn-secondary">Chi tiết đơn</a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    Chưa có đơn hàng nào được ghi nhận. Bấm <strong>"Tạo đơn hàng mới"</strong> để lập đơn.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

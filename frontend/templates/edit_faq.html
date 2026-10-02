@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Chỉnh sửa dữ liệu hỗ trợ #{{ faq.id }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 0 auto;">
+    <div class="page-header">
+        <h1 class="page-title">CHỈNH SỬA DỮ LIỆU HỖ TRỢ #{{ faq.id }}</h1>
+        <a href="/" class="btn btn-secondary">Quay lại danh sách</a>
+    </div>
+
+    <form method="POST" class="form-box">
+        <div class="form-group">
+            <label>Tên sự cố / Tên chính sách:</label>
+            <input type="text" name="issue_name" value="{{ faq.issue_name }}" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Danh mục:</label>
+                <select name="category">
+                    <option value="Kỹ thuật" {% if faq.category == 'Kỹ thuật' %}selected{% endif %}>Kỹ thuật</option>
+                    <option value="Bảo hành" {% if faq.category == 'Bảo hành' %}selected{% endif %}>Bảo hành</option>
+                    <option value="Trả góp" {% if faq.category == 'Trả góp' %}selected{% endif %}>Trả góp</option>
+                    <option value="Đơn hàng" {% if faq.category == 'Đơn hàng' %}selected{% endif %}>Đơn hàng</option>
+                    <option value="Chính sách" {% if faq.category == 'Chính sách' %}selected{% endif %}>Chính sách chung</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Thương hiệu:</label>
+                <input type="text" name="brand" value="{{ faq.brand }}" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Biểu hiện của máy / Câu hỏi thường gặp:</label>
+            <textarea name="symptom" rows="3" required>{{ faq.symptom }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Cách xử lý / Câu trả lời chuẩn của CSKH:</label>
+            <textarea name="solution" rows="4" required>{{ faq.solution }}</textarea>
+        </div>
+
+        <div style="margin-top: 25px; display: flex; gap: 10px;">
+            <button type="submit" class="btn btn-save">Cập nhật thay đổi</button>
+            <a href="/" class="btn btn-back">Hủy bỏ</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

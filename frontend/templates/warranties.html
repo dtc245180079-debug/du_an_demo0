@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Bảo Hành & Hậu Mãi - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">QUẢN LÝ BẢO HÀNH & CHĂM SÓC HẬU MÃI</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Tra cứu bảo hành theo số IMEI/Serial, tiếp nhận sự cố chuyển thành Ticket hỗ trợ và theo dõi nhắc nhở sau bán hàng
+        </p>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="filter-bar">
+    <form method="GET" action="/warranties" class="search-box">
+        <input type="text" name="keyword" placeholder="Tra cứu theo mã bảo hành, số IMEI/Serial 15 số, SĐT khách hoặc tên máy..." value="{{ keyword if keyword else '' }}">
+        <button type="submit" class="btn btn-primary">Tra cứu</button>
+        {% if keyword %}
+        <a href="/warranties" class="btn btn-secondary">Đặt lại</a>
+        {% endif %}
+    </form>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- Left: Warranties List -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Danh Sách Sổ Bảo Hành Điện Tử ({{ warranties|length }})</span>
+            </div>
+
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã Sổ BH</th>
+                            <th>Thiết Bị & IMEI</th>
+                            <th>Khách Hàng</th>
+                            <th>Thời Hạn Bảo Hành</th>
+                            <th>Trạng Thái</th>
+                            <th style="text-align: center;">Tiếp Nhận Sửa Chữa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if warranties %}
+                        {% for w in warranties %}
+                        <tr>
+                            <td><strong>{{ w.warranty_code }}</strong></td>
+                            <td>
+                                <div><strong>{{ w.product_name }}</strong></div>
+                                <div style="font-family: monospace; font-size: 11px; color: var(--text-muted);">
+                                    IMEI: {{ w.imei_serial }}
+                                </div>
+                            </td>
+                            <td>
+                                <div><strong>{{ w.customer_name }}</strong></div>
+                                <small style="color: var(--text-muted);">ĐT: {{ w.customer_phone }}</small>
+                            </td>
+                            <td>
+                                <div style="font-size: 12px;">Từ: {{ w.start_date.strftime("%d/%m/%Y") }}</div>
+                                <div style="font-size: 12px; font-weight: 600; color: #b45309;">Đến: {{ w.end_date.strftime("%d/%m/%Y") }}</div>
+                            </td>
+                            <td>
+                                {% if w.status == 'active' %}
+                                    <span class="badge" style="background:#e6f4ea; color:#137333;">Còn hiệu lực</span>
+                                {% else %}
+                                    <span class="badge" style="background:#f1f3f4; color:#5f6368;">Hết hạn</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <button class="btn btn-sm btn-danger" onclick="openClaimModal({{ w.id }}, '{{ w.product_name }}', '{{ w.imei_serial }}')">
+                                    Mở Ticket Sửa Chữa
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                                Không tìm thấy sổ bảo hành nào với thông tin tìm kiếm.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Post-Sale Care Reminders -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Lịch Nhắc Chăm Sóc Sau Bán Hàng</span>
+            </div>
+
+            {% if reminders %}
+                {% for rem in reminders %}
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; font-size: 13px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px;">
+                        <span>{{ rem.customer_name }}</span>
+                        <span class="badge" style="background:#fef3c7; color:#92400e; font-size: 10px;">{{ rem.reminder_type }}</span>
+                    </div>
+                    <div style="color: #4b5563; line-height: 1.5; margin-bottom: 8px;">
+                        {{ rem.content }}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; color: var(--danger); font-weight: 600;">Hạn: {{ rem.due_date.strftime("%d/%m/%Y") }}</span>
+                        <form method="POST" action="/warranties/reminders/{{ rem.id }}/complete" style="margin: 0;">
+                            <button type="submit" class="btn btn-sm btn-success" style="padding: 2px 8px; font-size: 11px;">
+                                Đã chăm sóc
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">
+                    Không có nhắc nhở nào đến hạn hôm nay.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Convert Warranty To Ticket -->
+<div id="modal-claim-warranty" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 520px; max-width: 90%; margin: 0; background: white; padding: 25px;">
+        <div class="card-title">
+            <span>Tiếp Nhận Bảo Hành Thành Ticket Hỗ Trợ</span>
+            <span onclick="document.getElementById('modal-claim-warranty').style.display='none'" style="cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-muted);">Đóng</span>
+        </div>
+        <form method="POST" action="/warranties/convert-ticket">
+            <input type="hidden" name="warranty_id" id="claim-warr-id">
+            <div class="form-group">
+                <label>Thiết bị bảo hành:</label>
+                <input type="text" id="claim-prod-name" class="form-control" readonly style="background: #f1f5f9;">
+            </div>
+            <div class="form-group">
+                <label>Mô tả tình trạng lỗi / hư hỏng của máy:</label>
+                <textarea name="issue_description" rows="4" class="form-control" required placeholder="Khách hàng báo sọc màn hình, pin tụt nhanh, không nhận sạc..."></textarea>
+            </div>
+            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="submit" class="btn btn-danger">Mở Phiếu Ticket Hỗ Trợ</button>
+                <button type="button" class="btn btn-back" onclick="document.getElementById('modal-claim-warranty').style.display='none'">Hủy</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function openClaimModal(warrId, prodName, imei) {
+        document.getElementById("claim-warr-id").value = warrId;
+        document.getElementById("claim-prod-name").value = `${prodName} (IMEI: ${imei})`;
+        document.getElementById("modal-claim-warranty").style.display = "flex";
+    }
+</script>
+{% endblock %}

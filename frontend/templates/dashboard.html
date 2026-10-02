@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}Bảng Điều Khiển - CRM Care AI{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js CDN for beautiful interactive charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">TỔNG QUAN VẬN HÀNH & KINH DOANH</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Xin chào, <strong>{{ session.get('full_name') }}</strong>! Dưới đây là tình hình hoạt động hỗ trợ và doanh thu cập nhật theo thời gian thực.
+        </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="/tickets" class="btn btn-primary">Xem Tickets</a>
+        <a href="/inbox" class="btn btn-secondary">Vào Hộp thư đa kênh</a>
+    </div>
+</div>
+
+<!-- Stat Cards Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">TỔNG SỐ PHIẾU HỖ TRỢ (TICKETS)</div>
+            <div class="stat-value">{{ stats.total_tickets }}</div>
+            <small style="color: #0f9d58; font-weight: 600;">{{ stats.ticket_status.get('open', 0) }} ticket mới cần xử lý</small>
+        </div>
+        <div class="stat-icon icon-blue" title="Phiếu hỗ trợ (Tickets)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"></path>
+                <path d="M13 5v2"></path>
+                <path d="M13 17v2"></path>
+                <path d="M13 11v2"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">HỒ SƠ KHÁCH HÀNG (CUSTOMER 360)</div>
+            <div class="stat-value">{{ stats.total_customers }}</div>
+            <small style="color: var(--text-muted);">Đã chuẩn hóa đa kênh</small>
+        </div>
+        <div class="stat-icon icon-green" title="Hồ sơ khách hàng">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">ĐIỂM HÀI LÒNG KHÁCH HÀNG (CSAT)</div>
+            <div class="stat-value">{{ stats.csat_avg }} <span style="font-size: 14px; color: var(--text-muted); font-weight: normal;">/ 5.0</span></div>
+            <small style="color: #0f9d58; font-weight: 600;">NPS: {{ stats.nps_avg }}/10 ({{ stats.survey_count }} đánh giá)</small>
+        </div>
+        <div class="stat-icon icon-amber" title="Đánh giá hài lòng">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">DOANH THU ĐƠN HÀNG</div>
+            <div class="stat-value" style="font-size: 20px; color: #1a73e8;">
+                {% set total_rev = 0 %}
+                {% for r in stats.revenue_trend %}
+                    {% set total_rev = total_rev + r.daily_revenue %}
+                {% endfor %}
+                {{ "{:,.0f}".format(total_rev) }} ₫
+            </div>
+            <small style="color: var(--text-muted);">Đồng bộ KiotViet, Sapo, Lazada</small>
+        </div>
+        <div class="stat-icon icon-red" title="Doanh thu đơn hàng">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<!-- Phone Sales Analytics Section -->
+{% if sales_analytics %}
+<div class="card" style="margin-bottom: 30px; border-top: 4px solid var(--primary);">
+    <div class="card-title" style="margin-bottom: 20px;">
+        <span>HIỆU QUẢ TƯ VẤN & BÁN ĐIỆN THOẠI DI ĐỘNG</span>
+        <div style="display: flex; gap: 8px;">
+            <a href="/consultation" class="btn btn-sm btn-primary">Tư vấn ngay</a>
+            <a href="/quotations" class="btn btn-sm btn-secondary">Báo giá</a>
+            <a href="/sales-orders" class="btn btn-sm btn-secondary">Đơn hàng</a>
+        </div>
+    </div>
+
+    <!-- Mini Sales Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 24px;">
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Doanh số bán trực tiếp</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--success); margin: 4px 0;">
+                {{ "{:,.0f}".format(sales_analytics.total_sales) }} ₫
+            </div>
+            <small style="color: var(--text-muted);">{{ sales_analytics.order_count }} đơn hàng thực tế</small>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Báo giá đang mở</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--primary); margin: 4px 0;">
+                {{ sales_analytics.active_quotes }}
+            </div>
+            <small style="color: var(--text-muted);">Đang chờ khách phản hồi</small>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Tỷ lệ chốt đơn (Win Rate)</div>
+            <div style="font-size: 22px; font-weight: 700; color: #b45309; margin: 4px 0;">
+                {{ sales_analytics.conversion_rate }} %
+            </div>
+            <small style="color: #059669; font-weight: 600;">Khách chuyển đổi thành công</small>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Khách tiềm năng (Kanban)</div>
+            <div style="font-size: 22px; font-weight: 700; color: #7c3aed; margin: 4px 0;">
+                {{ sales_analytics.opp_stages.values()|sum if sales_analytics.opp_stages else 0 }}
+            </div>
+            <small style="color: var(--text-muted);">Cơ hội trong chuỗi chăm sóc</small>
+        </div>
+    </div>
+
+    <!-- Top Products & Lead Funnel -->
+    <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 20px;">
+        <!-- Top Products List -->
+        <div>
+            <div style="font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                <span>Mẫu Điện Thoại Nổi Bật & Tồn Kho Hiện Hành</span>
+                <a href="/products" style="font-size: 12px; color: var(--primary); font-weight: normal;">Xem danh mục</a>
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mẫu máy</th>
+                            <th>Hãng</th>
+                            <th>Giá niêm yết / KM</th>
+                            <th>Tồn kho</th>
+                            <th style="text-align: center;">Tư vấn</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if sales_analytics.top_products %}
+                        {% for tp in sales_analytics.top_products %}
+                        <tr>
+                            <td>
+                                <strong><a href="/products/{{ tp.id }}" style="color: var(--text-main);">{{ tp.name }}</a></strong>
+                            </td>
+                            <td><span class="badge" style="background:#e0e7ff; color:#3730a3;">{{ tp.brand }}</span></td>
+                            <td>
+                                {% if tp.promo_price and tp.promo_price < tp.listed_price %}
+                                    <strong style="color: var(--danger);">{{ "{:,.0f}".format(tp.promo_price) }} ₫</strong>
+                                {% else %}
+                                    <strong>{{ "{:,.0f}".format(tp.listed_price) }} ₫</strong>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tp.stock_quantity > 0 %}
+                                    <span class="badge" style="background:#e6f4ea; color:#137333;">{{ tp.stock_quantity }} máy</span>
+                                {% else %}
+                                    <span class="badge" style="background:#fee2e2; color:#b91c1c;">Hết hàng</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                <a href="/quotations/create?product_id={{ tp.id }}" class="btn btn-sm btn-primary" style="padding: 2px 8px; font-size: 11px;">Báo giá</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sales Funnel Stages Breakdown -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px;">
+            <div style="font-weight: 700; font-size: 14px; margin-bottom: 12px;">
+                Phễu Khách Hàng Tiềm Năng (Lead Funnel)
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Khách mới tiếp cận (Lead)</span>
+                    <strong class="badge" style="background:#e0e7ff; color:#3730a3;">{{ sales_analytics.opp_stages.get('lead', 0) }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Đã liên hệ & Tìm hiểu</span>
+                    <strong class="badge" style="background:#e0f2fe; color:#0369a1;">{{ sales_analytics.opp_stages.get('contacted', 0) }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Đang tư vấn & Gửi báo giá</span>
+                    <strong class="badge" style="background:#fef3c7; color:#92400e;">{{ sales_analytics.opp_stages.get('proposal', 0) }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Đàm phán chốt phiên bản/màu</span>
+                    <strong class="badge" style="background:#ffedd5; color:#c2410c;">{{ sales_analytics.opp_stages.get('negotiation', 0) }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                    <span style="color: var(--success); font-weight: 600;">Chốt đơn thành công (Won)</span>
+                    <strong class="badge" style="background:#dcfce7; color:#15803d;">{{ sales_analytics.opp_stages.get('won', 0) }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Charts Section -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 30px;">
+    <!-- Doanh thu theo thời gian -->
+    <div class="card">
+        <div class="card-title">
+            <span>Xu Hướng Doanh Thu Theo Thời Gian</span>
+            <span style="font-size: 12px; font-weight: normal; color: var(--text-muted);">Đơn vị: VNĐ</span>
+        </div>
+        <div style="height: 300px;">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Phân bổ Ticket theo kênh & trạng thái -->
+    <div class="card">
+        <div class="card-title">
+            <span>Tỷ Lệ Kênh Hỗ Trợ</span>
+        </div>
+        <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+            <canvas id="channelChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Section: Active Shifts & Recent Tickets -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <!-- Trạng thái Ticket hiện tại -->
+    <div class="card">
+        <div class="card-title">
+            <span>Tiến Độ Xử Lý Ticket</span>
+            <a href="/tickets" style="font-size: 13px; color: var(--primary); text-decoration: none;">Xem tất cả</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Mới tiếp nhận (Open)</span>
+                    <strong>{{ stats.ticket_status.get('open', 0) }}</strong>
+                </div>
+                <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div style="background: var(--primary); height: 100%; width: {{ (stats.ticket_status.get('open', 0) / (stats.total_tickets or 1) * 100) }}%;"></div>
+                </div>
+            </div>
+
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Đang xử lý (In Progress)</span>
+                    <strong>{{ stats.ticket_status.get('in_progress', 0) }}</strong>
+                </div>
+                <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div style="background: var(--warning); height: 100%; width: {{ (stats.ticket_status.get('in_progress', 0) / (stats.total_tickets or 1) * 100) }}%;"></div>
+                </div>
+            </div>
+
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Đã giải quyết (Resolved)</span>
+                    <strong>{{ stats.ticket_status.get('resolved', 0) }}</strong>
+                </div>
+                <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div style="background: var(--success); height: 100%; width: {{ (stats.ticket_status.get('resolved', 0) / (stats.total_tickets or 1) * 100) }}%;"></div>
+                </div>
+            </div>
+
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Đã đóng & Khảo sát (Closed)</span>
+                    <strong>{{ stats.ticket_status.get('closed', 0) }}</strong>
+                </div>
+                <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div style="background: #94a3b8; height: 100%; width: {{ (stats.ticket_status.get('closed', 0) / (stats.total_tickets or 1) * 100) }}%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lịch Ca trực hôm nay -->
+    <div class="card">
+        <div class="card-title">
+            <span>Ca Trực Hôm Nay</span>
+            <a href="/shifts" style="font-size: 13px; color: var(--primary); text-decoration: none;">Quản lý ca trực</a>
+        </div>
+        <div class="table-responsive" style="border: none; box-shadow: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nhân viên</th>
+                        <th>Ca trực</th>
+                        <th>Khung giờ</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if shifts %}
+                    {% for s in shifts[:5] %}
+                    <tr>
+                        <td><strong>{{ s.agent_name }}</strong></td>
+                        <td>{{ s.shift_name }}</td>
+                        <td>{{ s.start_time }} - {{ s.end_time }}</td>
+                        <td>
+                            {% if s.status == 'present' %}
+                                <span class="badge" style="background:#e6f4ea; color:#137333;">Đang trực</span>
+                            {% elif s.status == 'completed' %}
+                                <span class="badge" style="background:#f1f3f4; color:#5f6368;">Hoàn tất</span>
+                            {% else %}
+                                <span class="badge" style="background:#fef7e0; color:#b06000;">Đã xếp lịch</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Chưa có ca trực nào được xếp hôm nay.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Revenue Trend Chart
+    const revCtx = document.getElementById('revenueChart').getContext('2d');
+    const revLabels = [{% for r in stats.revenue_trend|reverse %}'{{ r.order_date.strftime("%d/%m") if r.order_date else "Hôm nay" }}',{% endfor %}];
+    const revValues = [{% for r in stats.revenue_trend|reverse %}{{ r.daily_revenue }},{% endfor %}];
+
+    new Chart(revCtx, {
+        type: 'line',
+        data: {
+            labels: revLabels.length ? revLabels : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+            datasets: [{
+                label: 'Doanh thu (VNĐ)',
+                data: revValues.length ? revValues : [12000000, 19000000, 15000000, 25000000, 22000000, 38230000, 28000000],
+                borderColor: '#1a73e8',
+                backgroundColor: 'rgba(26, 115, 232, 0.1)',
+                fill: true,
+                tension: 0.3,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return (value / 1000000).toLocaleString() + 'Tr';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Channel Distribution Chart
+    const chCtx = document.getElementById('channelChart').getContext('2d');
+    const chLabels = [{% for c in stats.channel_distribution %}'{{ c.channel|capitalize }}',{% endfor %}];
+    const chValues = [{% for c in stats.channel_distribution %}{{ c.count }},{% endfor %}];
+
+    new Chart(chCtx, {
+        type: 'doughnut',
+        data: {
+            labels: chLabels.length ? chLabels : ['Webchat', 'Zalo OA', 'Facebook'],
+            datasets: [{
+                data: chValues.length ? chValues : [40, 35, 25],
+                backgroundColor: ['#00897b', '#0068ff', '#1877f2', '#e65100', '#cc2366']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>
+{% endblock %}

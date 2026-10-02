@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Bảng Kanban Cơ Hội Bán Hàng - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">BẢNG THEO DÕI DOANH THU & CƠ HỘI BÁN HÀNG (KANBAN)</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Quản lý phễu cơ hội bán hàng và tư vấn nâng cấp thiết bị từ tiếp cận ban đầu đến chốt đơn thành công
+        </p>
+    </div>
+    <div class="toolbar">
+        <button class="btn btn-add" onclick="document.getElementById('modal-create-opp').style.display='flex'">
+            Thêm cơ hội mới
+        </button>
+    </div>
+</div>
+
+<!-- Kanban Board Columns -->
+<div class="kanban-board">
+    {% set stages = [
+        ('lead', 'Mới Tiếp Cận', '#64748b'),
+        ('contacted', 'Đang Tư Vấn', '#3b82f6'),
+        ('proposal', 'Đã Báo Giá', '#f59e0b'),
+        ('negotiation', 'Đàm Phán', '#8b5cf6'),
+        ('won', 'Thành Công (Won)', '#10b981'),
+        ('lost', 'Thất Bại (Lost)', '#ef4444')
+    ] %}
+
+    {% for stage_key, stage_label, stage_color in stages %}
+    <div class="kanban-column" id="col-{{ stage_key }}">
+        <div class="kanban-col-header" style="border-bottom-color: {{ stage_color }};">
+            <span class="kanban-col-title" style="color: {{ stage_color }};">{{ stage_label }}</span>
+            <span class="badge" style="background: white; border: 1px solid #cbd5e1;">
+                {% set stage_items = opportunities|selectattr('stage', 'equalto', stage_key)|list %}
+                {{ stage_items|length }}
+            </span>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+            {% for item in stage_items %}
+            <div class="kanban-card">
+                <div class="kanban-card-title">{{ item.title }}</div>
+                <div class="kanban-card-val">{{ "{:,.0f}".format(item.value) }} ₫</div>
+                <div style="font-size: 12px; color: #374151; margin-bottom: 6px;">
+                    {{ item.customer_name or 'Khách tiềm năng' }}
+                    {% if item.customer_phone %}<br>ĐT: {{ item.customer_phone }}{% endif %}
+                </div>
+                <div class="kanban-card-footer">
+                    <span>Xác suất: <strong>{{ item.probability }}%</strong></span>
+                    {% if item.agent_name %}<span style="color: var(--primary);">{{ item.agent_name }}</span>{% endif %}
+                </div>
+                <!-- Move Stage Dropdown -->
+                <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 6px; display: flex; justify-content: flex-end;">
+                    <select onchange="updateOppStage({{ item.id }}, this.value)" style="font-size: 11px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <option value="">Chuyển cột</option>
+                        {% for sk, sl, sc in stages %}
+                            {% if sk != stage_key %}
+                            <option value="{{ sk }}">{{ sl }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Create Opportunity -->
+<div id="modal-create-opp" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 500px; max-width: 90%; margin: 0; background: white; padding: 25px;">
+        <div class="card-title">
+            <span>Thêm Cơ Hội Bán Hàng Mới</span>
+            <span onclick="document.getElementById('modal-create-opp').style.display='none'" style="cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-muted);">Đóng</span>
+        </div>
+        <form method="POST" action="/api/kanban/create">
+            <div class="form-group">
+                <label>Tiêu đề cơ hội:</label>
+                <input type="text" name="title" class="form-control" required placeholder="VD: Nâng cấp iPhone 15 Pro Max 256GB">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label>Tên khách hàng:</label>
+                    <input type="text" name="customer_name" class="form-control" required placeholder="Nguyễn Văn A">
+                </div>
+                <div class="form-group">
+                    <label>Số điện thoại:</label>
+                    <input type="tel" name="customer_phone" class="form-control" placeholder="0901234567">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label>Giá trị dự kiến (VNĐ):</label>
+                    <input type="number" name="value" class="form-control" required placeholder="30000000">
+                </div>
+                <div class="form-group">
+                    <label>Giai đoạn bắt đầu:</label>
+                    <select name="stage" class="form-control">
+                        <option value="lead">Mới tiếp cận</option>
+                        <option value="contacted">Đang tư vấn</option>
+                        <option value="proposal">Đã báo giá</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="submit" class="btn btn-save">Lưu cơ hội</button>
+                <button type="button" class="btn btn-back" onclick="document.getElementById('modal-create-opp').style.display='none'">Hủy</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    async function updateOppStage(oppId, newStage) {
+        if (!newStage) return;
+        try {
+            const res = await fetch(`/api/kanban/${oppId}/stage`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ stage: newStage })
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert("Lỗi: " + data.message);
+            }
+        } catch (err) {
+            alert("Không thể kết nối tới máy chủ.");
+        }
+    }
+</script>
+{% endblock %}

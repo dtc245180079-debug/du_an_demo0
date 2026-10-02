@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat Hỗ Trợ Khách Hàng</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { margin: 0; padding: 0; background: #f8fafc; height: 100vh; display: flex; flex-direction: column; }
+        .webchat-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: white; width: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .webchat-header { background: #1a73e8; color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .webchat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; }
+        .webchat-input { display: flex; padding: 12px; border-top: 1px solid #e2e8f0; background: white; gap: 8px; }
+        .webchat-input input { flex: 1; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 20px; outline: none; }
+        .webchat-input button { background: #1a73e8; color: white; border: none; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="webchat-container">
+        <div class="webchat-header">
+            <div>
+                <strong style="font-size: 16px;">Chăm Sóc Khách Hàng 24/7</strong>
+                <div style="font-size: 12px; opacity: 0.9;">Nhân viên và Trợ lý AI đang trực tuyến</div>
+            </div>
+            <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 10px;">Token Verified</span>
+        </div>
+
+        <div class="webchat-messages" id="webchat-feed">
+            <div class="feed-msg msg-customer" style="align-self: flex-start;">
+                <div class="msg-meta">
+                    <strong>Hệ thống CSKH</strong>
+                    <span>Vừa xong</span>
+                </div>
+                <div>Dạ em chào anh/chị ạ! Em có thể giúp gì cho anh/chị hôm nay ạ?</div>
+            </div>
+        </div>
+
+        <form class="webchat-input" id="webchat-form" onsubmit="sendWebchatMessage(event)">
+            <input type="text" id="webchat-input-text" placeholder="Nhập tin nhắn của bạn..." autocomplete="off" required>
+            <button type="submit" style="border-radius: 8px; width: 60px; font-size: 13px; font-weight: 600;">Gửi</button>
+        </form>
+    </div>
+
+    <script>
+        const convId = "{{ conversation_id }}";
+        const token = "{{ token }}";
+        const feed = document.getElementById("webchat-feed");
+        const input = document.getElementById("webchat-input-text");
+
+        async function sendWebchatMessage(e) {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+
+            // Render message immediately
+            const msgDiv = document.createElement("div");
+            msgDiv.className = "feed-msg msg-agent"; // Client side view
+            msgDiv.style.alignSelf = "flex-end";
+            msgDiv.innerHTML = `
+                <div class="msg-meta">
+                    <strong>Bạn</strong>
+                    <span>Vừa xong</span>
+                </div>
+                <div>${text}</div>
+            `;
+            feed.appendChild(msgDiv);
+            feed.scrollTop = feed.scrollHeight;
+            input.value = "";
+
+            try {
+                const res = await fetch("/api/webchat/messages", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        conversation_id: convId,
+                        message: text
+                    })
+                });
+                const data = await res.json();
+                if (data.auto_reply && data.auto_reply.message) {
+                    const botDiv = document.createElement("div");
+                    botDiv.className = "feed-msg msg-customer";
+                    botDiv.innerHTML = `
+                        <div class="msg-meta">
+                            <strong>Trợ lý tự động</strong>
+                            <span>Vừa xong</span>
+                        </div>
+                        <div>${data.auto_reply.message}</div>
+                    `;
+                    feed.appendChild(botDiv);
+                    feed.scrollTop = feed.scrollHeight;
+                }
+            } catch (err) {
+                console.error("Webchat send error:", err);
+            }
+        }
+    </script>
+</body>
+</html>

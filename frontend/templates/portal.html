@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Cổng Hỗ trợ Khách hàng - CRM Care AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">CỔNG HỖ TRỢ KHÁCH HÀNG</h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Xin chào <strong>{{ session.get('full_name') }}</strong>! Bạn có thể theo dõi tiến độ xử lý yêu cầu hoặc gửi yêu cầu hỗ trợ mới tại đây.
+        </p>
+    </div>
+    <div class="toolbar">
+        <a href="/portal/new-ticket" class="btn btn-add">Gửi phiếu hỗ trợ mới</a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- Left: Customer's Tickets -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Danh Sách Yêu Cầu Hỗ Trợ Của Bạn</span>
+                <span class="badge" style="background:#e8f0fe; color:#1a73e8;">{{ tickets|length }} phiếu</span>
+            </div>
+
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã Ticket</th>
+                            <th>Nội dung yêu cầu</th>
+                            <th>Ngày gửi</th>
+                            <th>Trạng thái</th>
+                            <th style="text-align: center;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if tickets %}
+                        {% for t in tickets %}
+                        <tr>
+                            <td><strong>{{ t.ticket_code }}</strong></td>
+                            <td>
+                                <strong>{{ t.subject }}</strong>
+                                {% if t.assigned_agent_name %}
+                                <div style="font-size: 11px; color: var(--text-muted);">Chuyên viên: {{ t.assigned_agent_name }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ t.created_at.strftime("%d/%m/%Y %H:%M") if t.created_at else '' }}</td>
+                            <td>
+                                <span class="badge status-{{ t.status }}">
+                                    {% if t.status == 'open' %}Mới tiếp nhận
+                                    {% elif t.status == 'in_progress' %}Đang xử lý
+                                    {% elif t.status == 'resolved' %}Đã giải quyết
+                                    {% elif t.status == 'closed' %}Đã đóng
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <a href="/portal/ticket/{{ t.id }}" class="btn btn-sm btn-primary">Trao đổi</a>
+                                {% if t.status in ['resolved', 'closed'] %}
+                                <a href="/portal/survey/{{ t.id }}" class="btn btn-sm btn-warning" title="Đánh giá chất lượng">Đánh giá</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                                Bạn chưa có phiếu hỗ trợ nào. Bấm nút <strong>"Gửi phiếu hỗ trợ mới"</strong> nếu cần giúp đỡ nhé!
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Customer's Orders & Info -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                <span>Đơn Hàng Của Bạn</span>
+            </div>
+            {% if orders %}
+                {% for ord in orders %}
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 10px; font-size: 13px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                        <span>{{ ord.order_code }}</span>
+                        <span class="badge" style="background:#e0e7ff; color:#3730a3; font-size: 10px;">{{ ord.source|upper }}</span>
+                    </div>
+                    <div style="color: var(--text-muted); margin: 4px 0;">{{ ord.items_summary }}</div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+                        <span style="color: var(--success); font-weight: 600;">{{ "{:,.0f}".format(ord.total_amount) }} ₫</span>
+                        <span>{{ ord.shipping_status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 13px; color: var(--text-muted);">Chưa tìm thấy đơn hàng nào liên kết với số điện thoại của bạn.</p>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>Trợ Giúp Nhanh 24/7</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted);">
+                Bạn có câu hỏi nhanh về chính sách bảo hành, đổi trả hay hướng dẫn kỹ thuật? Bạn có thể gửi phiếu hỗ trợ mới hoặc xem cẩm nang hướng dẫn bên dưới.
+            </p>
+            <a href="/" class="btn btn-secondary" style="width: 100%; justify-content: center;">Xem Cẩm Nang Hướng Dẫn & FAQs</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
