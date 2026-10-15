@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Bảo Hành & Hậu Mãi - CRM Care AI{% endblock %}
+{% block title %}Thiết Bị Khách Hàng & Sổ Bảo Hành - CSKH Mobile{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">QUẢN LÝ BẢO HÀNH & CHĂM SÓC HẬU MÃI</h1>
+        <h1 class="page-title">QUẢN LÝ THIẾT BỊ KHÁCH HÀNG & SỔ BẢO HÀNH</h1>
         <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
-            Tra cứu bảo hành theo số IMEI/Serial, tiếp nhận sự cố chuyển thành Ticket hỗ trợ và theo dõi nhắc nhở sau bán hàng
+            Quản lý thiết bị di động của khách hàng, tra cứu số IMEI/Serial, tiếp nhận sự cố kỹ thuật và chăm sóc sau bán hàng
         </p>
     </div>
 </div>
@@ -15,7 +15,7 @@
 <!-- Search Bar -->
 <div class="filter-bar">
     <form method="GET" action="/warranties" class="search-box">
-        <input type="text" name="keyword" placeholder="Tra cứu theo mã bảo hành, số IMEI/Serial 15 số, SĐT khách hoặc tên máy..." value="{{ keyword if keyword else '' }}">
+        <input type="text" name="keyword" placeholder="Tra cứu theo mã bảo hành, số IMEI/Serial 15 số, SĐT khách hoặc tên thiết bị..." value="{{ keyword if keyword else '' }}">
         <button type="submit" class="btn btn-primary">Tra cứu</button>
         {% if keyword %}
         <a href="/warranties" class="btn btn-secondary">Đặt lại</a>
@@ -28,7 +28,7 @@
     <div>
         <div class="card">
             <div class="card-title">
-                <span>Danh Sách Sổ Bảo Hành Điện Tử ({{ warranties|length }})</span>
+                <span>Danh Sách Thiết Bị Khách Hàng ({{ warranties|length }})</span>
             </div>
 
             <div class="table-responsive" style="border: none; box-shadow: none;">

@@ -542,6 +542,68 @@ tr:hover td {
     text-align: center;
 }
 
+/* Chat bubble định hướng chuẩn: Người gửi (TÔI) ở BÊN PHẢI, Đối phương ở BÊN TRÁI */
+.bubble-outgoing {
+    align-self: flex-end !important;
+    margin-left: auto !important;
+    max-width: 75% !important;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    color: #ffffff !important;
+    border-radius: 16px 16px 2px 16px !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.22) !important;
+    word-break: break-word;
+}
+
+.bubble-outgoing .msg-meta {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.bubble-outgoing .msg-meta strong {
+    color: #ffffff !important;
+}
+
+.bubble-outgoing .msg-meta span {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.bubble-incoming {
+    align-self: flex-start !important;
+    margin-right: auto !important;
+    max-width: 75% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 16px 16px 16px 2px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    word-break: break-word;
+}
+
+.bubble-incoming .msg-meta {
+    color: #64748b !important;
+}
+
+.bubble-incoming .msg-meta strong {
+    color: #0f172a !important;
+}
+
+.bubble-incoming .msg-meta span {
+    color: #64748b !important;
+}
+
+.bubble-system {
+    align-self: center !important;
+    margin: 6px auto !important;
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    font-size: 12px !important;
+    border-radius: 20px !important;
+    padding: 6px 16px !important;
+    max-width: 85% !important;
+    text-align: center !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
 .msg-meta {
     font-size: 11px;
     margin-bottom: 4px;
@@ -1600,5 +1662,116 @@ tr:hover td {
         flex-direction: column;
         align-items: flex-start;
         gap: 6px;
+    }
+}
+/* =====================================================================
+   NEW APP LAYOUT (Sidebar + Main) - CODEGYM STYLE
+   ===================================================================== */
+.app-layout {
+    display: flex;
+    min-height: calc(100vh - 64px);
+    width: 100%;
+    background: #f4f6f8;
+}
+
+.app-sidebar {
+    width: 250px;
+    background: #ffffff;
+    border-right: 1px solid var(--border-color);
+    flex-shrink: 0;
+    height: calc(100vh - 64px);
+    position: sticky;
+    top: 64px;
+    overflow-y: auto;
+}
+
+.sidebar-inner {
+    padding: 16px 0;
+}
+
+.sidebar-section {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #94a3b8;
+    font-weight: 700;
+    padding: 16px 20px 8px 20px;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    color: #475569;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin: 2px 10px;
+    border-radius: var(--radius-sm);
+}
+
+.sidebar-link:hover {
+    background: #f1f5f9;
+    color: var(--primary);
+}
+
+.sidebar-link.active {
+    background: #eff6ff;
+    color: var(--primary);
+}
+
+.sidebar-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    margin-right: 12px;
+    color: #94a3b8;
+}
+
+.sidebar-link:hover .sidebar-icon, .sidebar-link.active .sidebar-icon {
+    color: var(--primary);
+}
+
+.app-main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; 
+}
+
+.app-content-inner {
+    padding: 24px 32px;
+    flex: 1;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.app-footer {
+    background: #ffffff;
+    border-top: 1px solid var(--border-color);
+    padding: 16px;
+    margin-top: auto;
+}
+
+@media (max-width: 992px) {
+    .app-sidebar { display: none; }
+    .app-content-inner { padding: 16px; }
+}
+
+.nav-container { max-width: 100%; padding: 0 24px; }
+.navbar { background: #252b5c !important; }
+
+.nav-center-link:hover {
+    color: white !important;
+}
+@media (max-width: 992px) {
+    .nav-center-menu {
+        display: none !important;
+    }
+    .mobile-toggle {
+        display: block !important;
     }
 }

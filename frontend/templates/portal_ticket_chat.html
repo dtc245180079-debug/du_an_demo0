@@ -2,11 +2,337 @@
 
 {% block title %}Trao đổi Ticket {{ ticket.ticket_code }} - Cổng Khách Hàng{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Bố cục 2 cột: Trao đổi & Timeline tiến độ */
+    .portal-chat-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 24px;
+        align-items: start;
+        max-width: 1250px;
+        margin: 0 auto;
+    }
+
+    @media (max-width: 992px) {
+        .portal-chat-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Thẻ tổng quan yêu cầu bên phải */
+    .ticket-summary-card {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid #eef2f6;
+        box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05);
+        padding: 22px;
+        margin-bottom: 20px;
+    }
+
+    .ticket-code-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .ticket-code-tag {
+        font-size: 12px;
+        font-weight: 700;
+        color: #0052cc;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .ticket-status-badge {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 12px;
+    }
+    .ticket-status-badge.status-open {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+    .ticket-status-badge.status-in_progress {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+    .ticket-status-badge.status-resolved, .ticket-status-badge.status-closed {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .ticket-main-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 16px 0;
+        line-height: 1.35;
+    }
+
+    .ticket-meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        padding: 14px 0;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .ticket-meta-block .meta-label {
+        font-size: 12px;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .ticket-meta-block .meta-val {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tech-badge-initials {
+        width: 24px;
+        height: 24px;
+        background: #334155;
+        color: white;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    /* Progress bar */
+    .progress-section {
+        margin-top: 16px;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #334155;
+    }
+
+    .progress-track {
+        width: 100%;
+        height: 8px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #2563eb, #0052cc);
+        border-radius: 20px;
+        transition: width 0.4s ease;
+    }
+
+    /* Thẻ Timeline tiến độ xử lý */
+    .timeline-card {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid #eef2f6;
+        box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05);
+        padding: 22px;
+    }
+
+    .timeline-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 15.5px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 20px;
+    }
+
+    .timeline-header svg {
+        color: #2563eb;
+    }
+
+    .timeline-list {
+        position: relative;
+        padding-left: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    .timeline-list::before {
+        content: '';
+        position: absolute;
+        left: 10px;
+        top: 8px;
+        bottom: 8px;
+        width: 2px;
+        background: #e2e8f0;
+    }
+
+    .timeline-step {
+        position: relative;
+    }
+
+    .timeline-step-icon {
+        position: absolute;
+        left: -30px;
+        top: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+    }
+
+    .timeline-step.completed .timeline-step-icon {
+        background: #2563eb;
+        color: white;
+        box-shadow: 0 0 0 3px #dbeafe;
+    }
+
+    .timeline-step.active .timeline-step-icon {
+        background: #ffffff;
+        border: 3px solid #2563eb;
+        box-shadow: 0 0 0 3px #dbeafe;
+    }
+    .timeline-step.active .timeline-step-icon::after {
+        content: '';
+        width: 7px;
+        height: 7px;
+        background: #2563eb;
+        border-radius: 50%;
+    }
+
+    .timeline-step.pending .timeline-step-icon {
+        background: #cbd5e1;
+        border: 2px solid #ffffff;
+    }
+
+    .timeline-step-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 3px;
+        gap: 8px;
+    }
+
+    .timeline-step-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .timeline-step.active .timeline-step-title {
+        color: #0052cc;
+    }
+
+    .timeline-step.pending .timeline-step-title {
+        color: #94a3b8;
+    }
+
+    .timeline-step-time {
+        font-size: 11.5px;
+        color: #64748b;
+        white-space: nowrap;
+    }
+
+    .timeline-step-badge {
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 6px;
+        font-weight: 600;
+        margin-left: 6px;
+    }
+
+    .timeline-step-desc {
+        font-size: 12.5px;
+        color: #64748b;
+        line-height: 1.45;
+    }
+
+    /* Thẻ Hotline */
+    .hotline-card {
+        margin-top: 18px;
+        padding: 14px 18px;
+        background: #f0f7ff;
+        border-radius: 12px;
+        border: 1px solid #dbeafe;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+
+    .hotline-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .hotline-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        background: #2563eb;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .hotline-texts strong {
+        display: block;
+        font-size: 13.5px;
+        color: #1e293b;
+    }
+
+    .hotline-texts span {
+        font-size: 11.5px;
+        color: #64748b;
+    }
+
+    .hotline-btn {
+        padding: 6px 14px;
+        background: #ffffff;
+        color: #1e293b;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .hotline-btn:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
+<div class="page-header" style="max-width: 1250px; margin: 0 auto 20px auto;">
     <div>
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-            <a href="/portal" style="text-decoration: none; color: var(--text-muted);">Quay lại Cổng hỗ trợ</a>
+            <a href="/portal" style="text-decoration: none; color: var(--text-muted); font-size: 14px;">Quay lại Cổng hỗ trợ</a>
             <span class="badge status-{{ ticket.status }}">
                 {% if ticket.status == 'open' %}Mới tiếp nhận
                 {% elif ticket.status == 'in_progress' %}Đang xử lý
@@ -25,48 +351,199 @@
     {% endif %}
 </div>
 
-<div style="max-width: 850px; margin: 0 auto;">
-    <div class="feed-container">
-        <div class="feed-header">
-            <div>
-                <strong>Trao Đổi Với Chuyên Viên CSKH</strong>
-                {% if ticket.assigned_agent_name %}
-                <span style="font-size: 13px; color: var(--text-muted); margin-left: 8px;">(Hỗ trợ bởi: <strong>{{ ticket.assigned_agent_name }}</strong>)</span>
-                {% endif %}
+<!-- Layout 2 cột: Cột trái Feed trao đổi, Cột phải Timeline tiến độ xử lý -->
+<div class="portal-chat-layout">
+    <!-- CỘT TRÁI: KHUNG TRAO ĐỔI VỚI CHUYÊN VIÊN CSKH -->
+    <div>
+        <div class="feed-container" style="border-radius: 16px; border: 1px solid #eef2f6; box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05);">
+            <div class="feed-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 22px;">
+                <div>
+                    <strong style="font-size: 15px; color: #1e293b;">Trao Đổi Với Chuyên Viên CSKH</strong>
+                    {% if ticket.assigned_agent_name %}
+                    <span style="font-size: 13px; color: var(--text-muted); margin-left: 8px;">(Hỗ trợ bởi: <strong>{{ ticket.assigned_agent_name }}</strong>)</span>
+                    {% endif %}
+                </div>
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">KÊNH: {{ ticket.channel|upper }}</span>
             </div>
-            <span style="font-size: 12px; color: var(--text-muted);">Kênh: {{ ticket.channel|upper }}</span>
+
+            <div class="feed-messages" id="portal-feed-messages" style="background: #f8fafc; padding: 22px;">
+                {% for msg in messages %}
+                <div class="feed-msg {% if msg.sender_type == 'customer' %}bubble-outgoing{% elif msg.sender_type == 'system' %}bubble-system{% else %}bubble-incoming{% endif %}">
+                    <div class="msg-meta">
+                        <strong>{{ msg.sender_name }}</strong>
+                        <span>{{ msg.created_at.strftime("%H:%M %d/%m") if msg.created_at else '' }}</span>
+                    </div>
+                    <div style="white-space: pre-wrap;">{{ msg.message }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Khung nhập tin nhắn của khách hàng -->
+            {% if ticket.status != 'closed' %}
+            <div style="padding: 16px 20px; border-top: 1px solid #f1f5f9; background: white; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <form method="POST" action="/portal/ticket/{{ ticket.id }}">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" name="message" class="form-control" placeholder="Nhập tin nhắn phản hồi của bạn cho chuyên viên..." required autocomplete="off" style="border-radius: 10px;">
+                        <button type="submit" class="btn btn-primary" style="padding: 0 24px; border-radius: 10px; font-weight: 600;">
+                            Gửi
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <div style="padding: 16px; text-align: center; background: #f8fafc; color: var(--text-muted); font-size: 13px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                Phiếu hỗ trợ này đã được đóng. Nếu bạn có yêu cầu mới, vui lòng tạo phiếu hỗ trợ khác.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: THÔNG TIN YÊU CẦU & TIMELINE TIẾN ĐỘ XỬ LÝ -->
+    <div>
+        <!-- Thẻ tóm tắt yêu cầu & Thiết bị -->
+        <div class="ticket-summary-card">
+            <div class="ticket-code-row">
+                <span class="ticket-code-tag">MÃ YÊU CẦU #{{ ticket.ticket_code }}</span>
+                <span class="ticket-status-badge status-{{ ticket.status }}">
+                    {% if ticket.status == 'open' %}Mới tiếp nhận
+                    {% elif ticket.status == 'in_progress' %}Đang xử lý
+                    {% elif ticket.status == 'resolved' %}Đã giải quyết
+                    {% elif ticket.status == 'closed' %}Đã đóng
+                    {% else %}Đang xử lý
+                    {% endif %}
+                </span>
+            </div>
+            <h2 class="ticket-main-title">{{ ticket.subject }}</h2>
+
+            <div class="ticket-meta-grid">
+                <div class="ticket-meta-block">
+                    <div class="meta-label">Thiết bị</div>
+                    <div class="meta-val">
+                        {{ ticket.device_model or 'Thiết bị di động' }}
+                    </div>
+                </div>
+                <div class="ticket-meta-block">
+                    <div class="meta-label">Kỹ thuật viên</div>
+                    <div class="meta-val">
+                        <span class="tech-badge-initials">
+                            {{ ticket.assigned_agent_name[:2]|upper if ticket.assigned_agent_name else 'NV' }}
+                        </span>
+                        <span>{{ ticket.assigned_agent_name or 'Đang chỉ định' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thanh tiến độ tổng quan -->
+            <div class="progress-section">
+                <div class="progress-header">
+                    <span>Tiến độ tổng quan</span>
+                    <span style="color: #0052cc;">
+                        {% if ticket.status == 'open' %}25%
+                        {% elif ticket.status == 'in_progress' %}75%
+                        {% elif ticket.status in ['resolved', 'closed'] %}100%
+                        {% else %}50%
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width: {% if ticket.status == 'open' %}25%{% elif ticket.status == 'in_progress' %}75%{% elif ticket.status in ['resolved', 'closed'] %}100%{% else %}50%{% endif %};"></div>
+                </div>
+            </div>
         </div>
 
-        <div class="feed-messages" id="portal-feed-messages">
-            {% for msg in messages %}
-            <div class="feed-msg {% if msg.sender_type == 'customer' %}msg-agent{% elif msg.sender_type == 'system' %}msg-system{% else %}msg-customer{% endif %}"
-                 style="{% if msg.sender_type == 'customer' %}align-self: flex-end;{% elif msg.sender_type == 'system' %}align-self: center;{% else %}align-self: flex-start;{% endif %}">
-                <div class="msg-meta">
-                    <strong>{{ msg.sender_name }}</strong>
-                    <span>{{ msg.created_at.strftime("%H:%M %d/%m") if msg.created_at else '' }}</span>
-                </div>
-                <div style="white-space: pre-wrap;">{{ msg.message }}</div>
+        <!-- Thẻ Timeline tiến độ xử lý -->
+        <div class="timeline-card">
+            <div class="timeline-header">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Timeline tiến độ xử lý
             </div>
-            {% endfor %}
-        </div>
 
-        <!-- Chat input for customer -->
-        {% if ticket.status != 'closed' %}
-        <div style="padding: 16px; border-top: 1px solid var(--border-color); background: white;">
-            <form method="POST" action="/portal/ticket/{{ ticket.id }}">
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" name="message" class="form-control" placeholder="Nhập tin nhắn phản hồi của bạn cho chuyên viên..." required autocomplete="off">
-                    <button type="submit" class="btn btn-primary" style="padding: 0 20px;">
-                        Gửi
-                    </button>
+            <div class="timeline-list">
+                <!-- Bước 1: Tiếp nhận yêu cầu -->
+                <div class="timeline-step completed">
+                    <div class="timeline-step-icon">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <div class="timeline-step-title-row">
+                        <div class="timeline-step-title">Tiếp nhận yêu cầu</div>
+                        <div class="timeline-step-time">{{ ticket.created_at.strftime("%H:%M") if ticket.created_at else '09:30' }}</div>
+                    </div>
+                    <div class="timeline-step-desc">
+                        Hệ thống đã tiếp nhận thông tin yêu cầu hỗ trợ qua kênh {{ ticket.channel|upper }}.
+                    </div>
                 </div>
-            </form>
+
+                <!-- Bước 2: Phân công nhân viên / KTV -->
+                <div class="timeline-step {% if ticket.assigned_agent_name %}completed{% else %}active{% endif %}">
+                    <div class="timeline-step-icon">
+                        {% if ticket.assigned_agent_name %}
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        {% endif %}
+                    </div>
+                    <div class="timeline-step-title-row">
+                        <div class="timeline-step-title">Kỹ thuật viên nhận việc</div>
+                        <div class="timeline-step-time">{% if ticket.assigned_agent_name %}Đã phân công{% else %}Đang điều phối{% endif %}</div>
+                    </div>
+                    <div class="timeline-step-desc">
+                        {% if ticket.assigned_agent_name %}
+                        Chuyên viên <strong>{{ ticket.assigned_agent_name }}</strong> đã tiếp nhận và xử lý sự cố.
+                        {% else %}
+                        Hệ thống đang điều phối kỹ thuật viên chuyên trách hỗ trợ thiết bị.
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Bước 3: Đang tiến hành xử lý / Sửa chữa -->
+                <div class="timeline-step {% if ticket.status in ['resolved', 'closed'] %}completed{% elif ticket.status == 'in_progress' %}active{% else %}pending{% endif %}">
+                    <div class="timeline-step-icon">
+                        {% if ticket.status in ['resolved', 'closed'] %}
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        {% endif %}
+                    </div>
+                    <div class="timeline-step-title-row">
+                        <div class="timeline-step-title">
+                            Đang tiến hành xử lý / Sửa chữa
+                            {% if ticket.status == 'in_progress' %}
+                            <span class="timeline-step-badge">Đang thực hiện</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="timeline-step-desc">
+                        Kiểm tra chi tiết thiết bị, đo lường các thông số kỹ thuật và thực hiện khắc phục.
+                    </div>
+                </div>
+
+                <!-- Bước 4: Kiểm tra chất lượng (QC) & Bàn giao -->
+                <div class="timeline-step {% if ticket.status in ['resolved', 'closed'] %}completed{% else %}pending{% endif %}">
+                    <div class="timeline-step-icon">
+                        {% if ticket.status in ['resolved', 'closed'] %}
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        {% endif %}
+                    </div>
+                    <div class="timeline-step-title-row">
+                        <div class="timeline-step-title">Kiểm tra (QC) & Bàn giao</div>
+                        <div class="timeline-step-time">{% if ticket.status in ['resolved', 'closed'] %}Hoàn tất{% else %}Dự kiến{% endif %}</div>
+                    </div>
+                    <div class="timeline-step-desc">
+                        Test lại toàn bộ chức năng, vệ sinh máy và bàn giao kết quả cho khách hàng.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hotline liên hệ khẩn cấp -->
+            <div class="hotline-card">
+                <div class="hotline-info">
+                    <div class="hotline-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+                    </div>
+                    <div class="hotline-texts">
+                        <strong>Cần hỗ trợ gấp?</strong>
+                        <span>Hotline: 1900 6868 (8:00 - 21:00)</span>
+                    </div>
+                </div>
+                <a href="tel:19006868" class="hotline-btn">Gọi ngay</a>
+            </div>
         </div>
-        {% else %}
-        <div style="padding: 16px; text-align: center; background: #f8fafc; color: var(--text-muted); font-size: 13px;">
-            Phiếu hỗ trợ này đã được đóng. Nếu bạn có yêu cầu mới, vui lòng tạo phiếu hỗ trợ khác.
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Cài Đặt Hệ Thống CSKH Mobile - CSKH Mobile{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 800; color: #1e293b;">
+            CÀI ĐẶT HỆ THỐNG CSKH & DỊCH VỤ (SETTINGS)
+        </h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Thiết lập thông số vận hành sau bán hàng, quy tắc phân bổ SLA, cấu hình AI Assistant và tích hợp cổng đa kênh
+        </p>
+    </div>
+    <div>
+        <button type="button" onclick="document.getElementById('settings-form').submit()" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Lưu Cấu Hình Hệ Thống
+        </button>
+    </div>
+</div>
+
+<form id="settings-form" method="POST" action="/settings">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Card 1: Thông tin trung tâm CSKH -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #1e293b;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #3b82f6;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                1. Thông Tin Trung Tâm & Thương Hiệu
+            </div>
+
+            <div class="form-group">
+                <label>Tên hệ thống / Đơn vị:</label>
+                <input type="text" name="brand_name" class="form-control" value="{{ settings.brand_name or 'Hệ Thống Chăm Sóc Khách Hàng Mobile' }}" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label>Hotline CSKH / Khiếu nại:</label>
+                    <input type="text" name="hotline" class="form-control" value="{{ settings.hotline or '0868643044' }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Email hỗ trợ kỹ thuật:</label>
+                    <input type="email" name="support_email" class="form-control" value="{{ settings.support_email or 'support@cskhmobile.vn' }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Địa chỉ trung tâm tiếp nhận máy bảo hành:</label>
+                <input type="text" name="address" class="form-control" value="{{ settings.address or 'Số 123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP. Hồ Chí Minh' }}">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Khung giờ phục vụ khách hàng:</label>
+                <input type="text" name="working_hours" class="form-control" value="{{ settings.working_hours or '08:00 - 21:30 (Thứ 2 đến Chủ nhật, kể cả ngày lễ)' }}">
+            </div>
+        </div>
+
+        <!-- Card 2: Quy tắc SLA & Khảo sát -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #1e293b;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #10b981;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                2. Tiêu Chuẩn SLA & Tự Động Hóa
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label>Thời gian phản hồi đầu tiên (SLA Phút):</label>
+                    <input type="number" name="sla_first_response" class="form-control" value="{{ settings.sla_first_response or 15 }}">
+                    <small style="color: #64748b;">Mục tiêu phản hồi khách trong vòng X phút</small>
+                </div>
+                <div class="form-group">
+                    <label>Thời gian sửa chữa cam kết (Giờ):</label>
+                    <input type="number" name="sla_resolution_hours" class="form-control" value="{{ settings.sla_resolution_hours or 24 }}">
+                    <small style="color: #64748b;">Thời gian xử lý xong sự cố phần cứng</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Thuật toán tự động phân bổ Ticket:</label>
+                <select name="auto_assign_method" class="form-control">
+                    <option value="least_busy" selected>Ưu tiên nhân viên ít việc nhất (Load Balancing)</option>
+                    <option value="round_robin">Luân phiên từng nhân viên theo vòng (Round-Robin)</option>
+                    <option value="manual">Phân công thủ công bởi Quản trị viên</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" name="auto_survey_enabled" value="1" checked style="width: 18px; height: 18px;">
+                    <span style="font-weight: 600; color: #1e293b;">Tự động gửi khảo sát CSAT & NPS ngay khi Ticket chuyển sang trạng thái "Đã giải quyết"</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Card 3: Cấu hình Trí tuệ nhân tạo (AI Engine) -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #1e293b;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #8b5cf6;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+                3. Trợ Lý Trí Tuệ Nhân Tạo (AI Assistant Engine)
+            </div>
+
+            <div class="form-group">
+                <label>Nhà cung cấp AI (Provider):</label>
+                <select name="ai_provider" class="form-control">
+                    <option value="gemini" selected>Google Gemini 2.5 Flash (Khuyến nghị - Tối ưu tiếng Việt)</option>
+                    <option value="mock">Offline Mock Provider (Dự phòng khẩn cấp không cần mạng)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Tông giọng phản hồi CSKH của AI:</label>
+                <select name="ai_tone" class="form-control">
+                    <option value="empathetic" selected>Chu đáo, ân cần & Đồng cảm cao (Tốt nhất cho xử lý khiếu nại)</option>
+                    <option value="professional">Lịch sự, chuẩn mực & Chuyên nghiệp doanh nghiệp</option>
+                    <option value="concise">Ngắn gọn, tập trung thẳng vào giải pháp kỹ thuật</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>System Prompt Chỉ Đạo Hành Vi AI:</label>
+                <textarea name="system_prompt" rows="3" class="form-control" style="font-size: 13px;">Bạn là trợ lý CSKH chuyên nghiệp của chuỗi di động. Luôn xoa dịu khách hàng khi gặp sự cố, giải thích nguyên nhân rõ ràng và đề xuất mang máy qua trung tâm kiểm tra miễn phí trong thời gian bảo hành.</textarea>
+            </div>
+        </div>
+
+        <!-- Card 4: Tích hợp Đa kênh & Cổng giao tiếp -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #1e293b;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #f59e0b;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                4. Cổng Giao Tiếp Đa Kênh (Omnichannel Webhooks)
+            </div>
+
+            <div class="form-group">
+                <label>Webhook Tiếp Nhận Zalo OA:</label>
+                <input type="text" readonly class="form-control" value="https://crm.cskhmobile.vn/webhook/zalo" style="background: #f8fafc; font-family: monospace;">
+                <small style="color: #10b981; font-weight: 600;">● Đã cấu hình xác thực chữ ký HMAC SHA256</small>
+            </div>
+
+            <div class="form-group">
+                <label>Webhook Tiếp Nhận Facebook Fanpage:</label>
+                <input type="text" readonly class="form-control" value="https://crm.cskhmobile.vn/webhook/facebook" style="background: #f8fafc; font-family: monospace;">
+                <small style="color: #10b981; font-weight: 600;">● Sẵn sàng đồng bộ hội thoại Messenger</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Tổng Đài Thoại WebRTC / Twilio Softphone:</label>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #ecfdf5; border-radius: 6px;">
+                    <span style="font-size: 13.5px; color: #047857; font-weight: 600;">Trình duyệt đã kích hoạt Softphone Dialer</span>
+                    <span class="badge" style="background: #10b981; color: white;">Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

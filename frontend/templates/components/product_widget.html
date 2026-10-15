@@ -1,0 +1,54 @@
+{% if sales_analytics %}
+<div class="card-title" style="margin-bottom: 20px;">
+    <span>NHÓM DỮ LIỆU SẢN PHẨM & KHO (PRODUCT WIDGET)</span>
+</div>
+
+<div class="card" style="margin-bottom: 30px;">
+    <div style="font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; justify-content: space-between;">
+        <span>Mẫu Điện Thoại Nổi Bật & Tồn Kho Hiện Hành</span>
+        <a href="/products" style="font-size: 12px; color: var(--primary); font-weight: normal;">Xem danh mục</a>
+    </div>
+    <div class="table-responsive" style="border: none; box-shadow: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mẫu máy</th>
+                    <th>Hãng</th>
+                    <th>Giá niêm yết / KM</th>
+                    <th>Tồn kho</th>
+                    <th style="text-align: center;">Tư vấn</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if sales_analytics.top_products %}
+                {% for tp in sales_analytics.top_products %}
+                <tr>
+                    <td>
+                        <strong><a href="/products/{{ tp.id }}" style="color: var(--text-main);">{{ tp.name }}</a></strong>
+                    </td>
+                    <td><span class="badge" style="background:#e0e7ff; color:#3730a3;">{{ tp.brand }}</span></td>
+                    <td>
+                        {% if tp.promo_price and tp.promo_price < tp.listed_price %}
+                            <strong style="color: var(--danger);">{{ "{:,.0f}".format(tp.promo_price) }} ₫</strong>
+                        {% else %}
+                            <strong>{{ "{:,.0f}".format(tp.listed_price) }} ₫</strong>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if tp.stock_quantity > 0 %}
+                            <span class="badge" style="background:#e6f4ea; color:#137333;">{{ tp.stock_quantity }} máy</span>
+                        {% else %}
+                            <span class="badge" style="background:#fee2e2; color:#b91c1c;">Hết hàng</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <a href="/quotations/create?product_id={{ tp.id }}" class="btn btn-sm btn-primary" style="padding: 2px 8px; font-size: 11px;">Báo giá</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}

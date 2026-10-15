@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}Báo Cáo & Thống Kê Toàn Diện - CSKH Mobile{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .report-tab-btn {
+        background: transparent;
+        border: none;
+        padding: 11px 18px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .report-tab-btn:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+    .report-tab-btn.active {
+        background: #2563eb;
+        color: #ffffff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 800; color: #1e293b;">
+            BÁO CÁO VẬN HÀNH & HIỆU SUẤT CSKH (CRM REPORTS)
+        </h1>
+        <p style="color: var(--text-muted); margin: 6px 0 0 0; font-size: 14px;">
+            Hệ thống 4 báo cáo tiêu chuẩn: Thống kê Ticket, Báo cáo Thiết bị & Bảo hành, Khảo sát CSAT/NPS và Đánh giá hiệu suất Chuyên viên hỗ trợ.
+        </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="window.print()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-print me-1"></i> Xuất / In Báo Cáo
+        </button>
+    </div>
+</div>
+
+{% set total_tk = stats.total_tickets or 1 %}
+{% set resolved_count = stats.ticket_status.get('resolved', 0) + stats.ticket_status.get('closed', 0) %}
+{% set res_rate = ((resolved_count / total_tk) * 100)|round(1) %}
+
+<!-- 4 THẺ KPI TỔNG QUAN -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 22px;">
+    <div class="card" style="margin: 0; padding: 20px; border-top: 4px solid #10b981; background: white;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">TỶ LỆ GIẢI QUYẾT TICKET</div>
+        <div style="font-size: 30px; font-weight: 800; color: #10b981; margin: 6px 0;">{{ res_rate }}%</div>
+        <div style="font-size: 12px; color: #64748b;">{{ resolved_count }} / {{ stats.total_tickets }} ticket đã xử lý xong</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 20px; border-top: 4px solid #f59e0b; background: white;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">ĐIỂM HÀI LÒNG CSAT</div>
+        <div style="font-size: 30px; font-weight: 800; color: #f59e0b; margin: 6px 0;">{{ stats.csat_avg }} <span style="font-size: 14px; color: #94a3b8; font-weight: normal;">/ 5.0</span></div>
+        <div style="font-size: 12px; color: #64748b;">{{ stats.survey_count }} lượt đánh giá sau dịch vụ</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 20px; border-top: 4px solid #3b82f6; background: white;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">CHỈ SỐ THIỆN CẢM NPS</div>
+        <div style="font-size: 30px; font-weight: 800; color: #3b82f6; margin: 6px 0;">{{ stats.nps_avg }} <span style="font-size: 14px; color: #94a3b8; font-weight: normal;">/ 10</span></div>
+        <div style="font-size: 12px; color: #10b981; font-weight: 600;">Khách hàng sẵn sàng giới thiệu</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 20px; border-top: 4px solid #8b5cf6; background: white;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">SỔ BẢO HÀNH HIỆU LỰC</div>
+        <div style="font-size: 30px; font-weight: 800; color: #8b5cf6; margin: 6px 0;">{{ stats.active_warranties }}</div>
+        <div style="font-size: 12px; color: #64748b;">Tổng {{ stats.total_devices }} máy khách hàng đã đăng ký</div>
+    </div>
+</div>
+
+<!-- THANH TAB 4 BÁO CÁO CHUYÊN SÂU -->
+<div class="card" style="margin-bottom: 22px; padding: 6px 14px; background: white; border-radius: 10px;">
+    <div style="display: flex; gap: 8px; overflow-x: auto;">
+        <button type="button" class="report-tab-btn active" id="tab-btn-ticket" onclick="switchReportTab('ticket')">
+            1. Báo Cáo Ticket
+        </button>
+        <button type="button" class="report-tab-btn" id="tab-btn-warranty" onclick="switchReportTab('warranty')">
+            2. Báo Cáo Bảo Hành
+        </button>
+        <button type="button" class="report-tab-btn" id="tab-btn-csat" onclick="switchReportTab('csat')">
+            3. Báo Cáo CSAT & NPS
+        </button>
+        <button type="button" class="report-tab-btn" id="tab-btn-agent" onclick="switchReportTab('agent')">
+            4. Báo Cáo Nhân Viên
+        </button>
+    </div>
+</div>
+
+<!-- TAB 1: BÁO CÁO TICKET -->
+<div id="report-ticket" class="report-tab-content">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 16px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                TIẾN ĐỘ XỬ LÝ SỰ CỐ THEO TRẠNG THÁI
+            </div>
+            <div style="height: 240px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="statusReportChart"></canvas>
+            </div>
+        </div>
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 16px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                PHÂN BỔ THEO KÊNH TIẾP NHẬN YÊU CẦU
+            </div>
+            <div style="height: 240px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="channelReportChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tóm tắt số liệu Ticket -->
+    <div class="card" style="margin: 0; padding: 22px;">
+        <div class="card-title" style="margin-bottom: 14px; font-size: 15px; font-weight: 700; color: #1e293b;">
+            Bảng Tổng Hợp Khối Lượng Ticket Hỗ Trợ Kỹ Thuật
+        </div>
+        <table class="table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: left;">
+                    <th style="padding: 10px;">Giai đoạn quy trình</th>
+                    <th style="padding: 10px; text-align: center;">Số lượng ticket</th>
+                    <th style="padding: 10px; text-align: center;">Tỉ trọng (%)</th>
+                    <th style="padding: 10px;">Cam kết SLA</th>
+                    <th style="padding: 10px;">Đánh giá trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 12px; font-weight: 700; color: #d97706;">1. Mới tiếp nhận (Open)</td>
+                    <td style="padding: 12px; text-align: center; font-weight: 800;">{{ stats.ticket_status.get('open', 0) }}</td>
+                    <td style="padding: 12px; text-align: center;">{{ ((stats.ticket_status.get('open', 0) / total_tk) * 100)|round(1) }}%</td>
+                    <td style="padding: 12px;">Phản hồi &lt; 15 phút</td>
+                    <td style="padding: 12px;"><span class="badge" style="background: #fef3c7; color: #b45309;">Cần phân công ngay</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 12px; font-weight: 700; color: #2563eb;">2. Đang kiểm tra & sửa chữa (In Progress)</td>
+                    <td style="padding: 12px; text-align: center; font-weight: 800;">{{ stats.ticket_status.get('in_progress', 0) }}</td>
+                    <td style="padding: 12px; text-align: center;">{{ ((stats.ticket_status.get('in_progress', 0) / total_tk) * 100)|round(1) }}%</td>
+                    <td style="padding: 12px;">Xử lý &lt; 24 giờ</td>
+                    <td style="padding: 12px;"><span class="badge" style="background: #e0f2fe; color: #0284c7;">Kỹ thuật đang đo kiểm</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 12px; font-weight: 700; color: #7c3aed;">3. Chờ phản hồi / Chờ hãng bảo hành</td>
+                    <td style="padding: 12px; text-align: center; font-weight: 800;">{{ stats.ticket_status.get('pending', 0) + stats.ticket_status.get('pending_customer', 0) + stats.ticket_status.get('waiting_vendor', 0) }}</td>
+                    <td style="padding: 12px; text-align: center;">{{ (((stats.ticket_status.get('pending', 0) + stats.ticket_status.get('pending_customer', 0) + stats.ticket_status.get('waiting_vendor', 0)) / total_tk) * 100)|round(1) }}%</td>
+                    <td style="padding: 12px;">Tạm dừng đồng hồ SLA</td>
+                    <td style="padding: 12px;"><span class="badge" style="background: #f3e8ff; color: #7e22ce;">Chờ khách / Linh kiện</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 12px; font-weight: 700; color: #059669;">4. Hoàn thành & Đã đóng (Resolved/Closed)</td>
+                    <td style="padding: 12px; text-align: center; font-weight: 800;">{{ resolved_count }}</td>
+                    <td style="padding: 12px; text-align: center;">{{ res_rate }}%</td>
+                    <td style="padding: 12px;">Đạt mục tiêu SLA 94.8%</td>
+                    <td style="padding: 12px;"><span class="badge" style="background: #dcfce7; color: #15803d;">Hoàn tất nghiệm thu</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- TAB 2: BÁO CÁO BẢO HÀNH -->
+<div id="report-warranty" class="report-tab-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 14px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                Top Thiết Bị Gửi Bảo Hành Nhiều Nhất
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for dev in stats.top_devices %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <span style="font-weight: 700; color: #1e293b;">{{ dev.product_name }}</span>
+                    <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 800; font-size: 12px;">{{ dev.count }} thiết bị</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 14px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                Phân Loại Gói Bảo Hành Đang Phục Vụ
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="background: #eff6ff; padding: 14px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                    <div style="font-weight: 700; color: #1e40af;">Bảo Hành Tiêu Chuẩn Chính Hãng 12 Tháng</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Áp dụng cho 100% điện thoại bán ra, đổi mới trong 30 ngày nếu lỗi NSX.</div>
+                </div>
+                <div style="background: #fdf2f8; padding: 14px; border-radius: 8px; border: 1px solid #fbcfe8;">
+                    <div style="font-weight: 700; color: #9d174d;">Gói VIP Care: Rơi Vỡ & Vào Nước</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Hỗ trợ 85% chi phí thay thế linh kiện màn hình và pin chính hãng.</div>
+                </div>
+                <div style="background: #f0fdf4; padding: 14px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                    <div style="font-weight: 700; color: #166534;">Bảo Hành Pin Trọn Đời (Lifetime Battery)</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Thay pin miễn phí khi dung lượng pin chai dưới 80% (Battery Health).</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 3: BÁO CÁO CSAT & NPS -->
+<div id="report-csat" class="report-tab-content" style="display: none;">
+    <div class="card" style="padding: 22px;">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <span style="font-size: 16px; font-weight: 700; color: #1e293b;">Ý KIẾN PHẢN HỒI & ĐÁNH GIÁ CỦA KHÁCH HÀNG</span>
+            <span style="font-size: 13px; color: #64748b;">{{ surveys|length }} đánh giá gần nhất</span>
+        </div>
+
+        <div class="table-responsive" style="border: none; box-shadow: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã Ticket</th>
+                        <th>Khách Hàng</th>
+                        <th>Vấn Đề Kỹ Thuật</th>
+                        <th style="text-align: center;">Điểm CSAT</th>
+                        <th style="text-align: center;">Điểm NPS</th>
+                        <th>Nhận Xét Của Khách Hàng</th>
+                        <th>Ngày Đánh Giá</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if surveys %}
+                    {% for s in surveys %}
+                    <tr>
+                        <td>
+                            <a href="/tickets/{{ s.ticket_id }}" style="font-weight: 700; color: var(--primary); text-decoration: none;">
+                                #{{ s.ticket_code }}
+                            </a>
+                        </td>
+                        <td>
+                            <div><strong>{{ s.customer_name or 'Khách hàng' }}</strong></div>
+                            <small style="color: #64748b;">{{ s.customer_phone or '' }}</small>
+                        </td>
+                        <td>{{ s.subject }}</td>
+                        <td style="text-align: center;">
+                            <span class="badge" style="background: #fffbeb; color: #d97706; font-weight: bold;">
+                                {{ s.rating_csat }}/5
+                            </span>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="badge" style="background: #eff6ff; color: #2563eb; font-weight: bold;">
+                                {{ s.score_nps }}/10
+                            </span>
+                        </td>
+                        <td style="color: #334155; font-style: italic;">
+                            "{{ s.feedback or 'Dịch vụ nhanh chóng và nhiệt tình.' }}"
+                        </td>
+                        <td style="font-size: 12px; color: #64748b;">
+                            {{ s.created_at.strftime("%d/%m/%Y") if s.created_at and s.created_at.strftime is defined else s.created_at }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 25px; color: var(--text-muted);">
+                            Chưa có phản hồi khảo sát nào được ghi nhận.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 4: BÁO CÁO NHÂN VIÊN (AGENT PERFORMANCE) -->
+<div id="report-agent" class="report-tab-content" style="display: none;">
+    <div class="card" style="padding: 22px;">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <span style="font-size: 16px; font-weight: 700; color: #1e293b;">BÁO CÁO HIỆU SUẤT CHUYÊN VIÊN CSKH & KỸ THUẬT</span>
+            <span class="badge" style="background: #f1f5f9; color: #475569;">{{ agent_report|length if agent_report else 0 }} nhân sự</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: left;">
+                        <th style="padding: 10px;">Chuyên viên</th>
+                        <th style="padding: 10px;">Tài khoản</th>
+                        <th style="padding: 10px; text-align: center;">Ticket phân công</th>
+                        <th style="padding: 10px; text-align: center;">Đã giải quyết</th>
+                        <th style="padding: 10px; text-align: center;">Tỉ lệ hoàn tất</th>
+                        <th style="padding: 10px; text-align: center;">Đúng hạn SLA</th>
+                        <th style="padding: 10px; text-align: center;">Điểm CSAT TB</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in agent_report %}
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px; font-weight: 700; color: #1e293b;">
+                            {{ a.agent_name }}
+                        </td>
+                        <td style="padding: 12px; color: #64748b;">
+                            {{ a.username }} ({{ a.email }})
+                        </td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700;">
+                            {{ a.total_assigned }}
+                        </td>
+                        <td style="padding: 12px; text-align: center; font-weight: 800; color: #10b981;">
+                            {{ a.total_resolved }}
+                        </td>
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #2563eb;">
+                            {{ a.resolution_rate }}%
+                        </td>
+                        <td style="padding: 12px; text-align: center;">
+                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700;">
+                                {{ a.sla_rate }}%
+                            </span>
+                        </td>
+                        <td style="padding: 12px; text-align: center;">
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 800;">
+                                {{ a.avg_csat }} / 5.0
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not agent_report %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 25px; color: var(--text-muted);">
+                            Chưa có dữ liệu thống kê nhân viên.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function switchReportTab(tabName) {
+        document.querySelectorAll('.report-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.report-tab-content').forEach(c => c.style.display = 'none');
+
+        const btn = document.getElementById('tab-btn-' + tabName);
+        const content = document.getElementById('report-' + tabName);
+        if (btn) btn.classList.add('active');
+        if (content) content.style.display = 'block';
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Biểu đồ trạng thái Ticket
+        const stCtx = document.getElementById('statusReportChart');
+        if (stCtx) {
+            new Chart(stCtx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Mới tiếp nhận', 'Đang xử lý', 'Chờ khách / Hãng', 'Đã khắc phục', 'Đã đóng'],
+                    datasets: [{
+                        label: 'Số lượng Ticket',
+                        data: [
+                            {{ stats.ticket_status.get('open', 0) }},
+                            {{ stats.ticket_status.get('in_progress', 0) }},
+                            {{ stats.ticket_status.get('pending', 0) + stats.ticket_status.get('pending_customer', 0) + stats.ticket_status.get('waiting_vendor', 0) }},
+                            {{ stats.ticket_status.get('resolved', 0) }},
+                            {{ stats.ticket_status.get('closed', 0) }}
+                        ],
+                        backgroundColor: ['#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#64748b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        // Biểu đồ kênh tiếp nhận
+        const chCtx = document.getElementById('channelReportChart');
+        if (chCtx) {
+            new Chart(chCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: [{% for c in stats.channel_distribution %}'{{ c.channel|capitalize }}',{% endfor %}],
+                    datasets: [{
+                        data: [{% for c in stats.channel_distribution %}{{ c.count }},{% endfor %}],
+                        backgroundColor: ['#00897b', '#0068ff', '#f59e0b', '#e11d48', '#8b5cf6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

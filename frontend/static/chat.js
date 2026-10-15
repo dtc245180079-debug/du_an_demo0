@@ -15,16 +15,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function formatMessageText(text) {
-        if (!text) return "";
+        if (!text || !chatMessages) return "";
         const escaped = text.trim()
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
-        return escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+        return escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
     }
 
     function addMessage(text, sender) {
-        if (!chatMessages) return;
+        if (!text || !chatMessages) return;
         const msgDiv = document.createElement("div");
         msgDiv.className = `chat-message ${sender}`;
         const content = document.createElement("div");
@@ -82,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (typingEl) typingEl.remove();
 
             if (data.success) {
-                addMessage(data.answer, "bot");
+                if (data.answer) addMessage(data.answer, "bot");
             } else {
                 addMessage("Lỗi: " + data.message, "bot");
             }
@@ -100,4 +100,26 @@ document.addEventListener("DOMContentLoaded", function () {
             sendMessage();
         }
     });
+
+    // POLLING TỪ NHÂN VIÊN CSKH
+    let lastMsgId = 0;
+    setInterval(async () => {
+        try {
+            const res = await fetch(`/api/chat/poll?last_msg_id=${lastMsgId}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.messages && data.messages.length > 0) {
+                    for (const msg of data.messages) {
+                        // Thêm tên nhân viên làm prefix để khách hàng biết
+                        addMessage(`**${msg.sender_name} (CSKH):**\n${msg.text}`, "bot");
+                        lastMsgId = Math.max(lastMsgId, msg.id);
+                    }
+                    // Tự động mở khung chat nếu có tin nhắn mới
+                    if (chatWin && !chatWin.classList.contains("show")) {
+                        chatWin.classList.add("show");
+                    }
+                }
+            }
+        } catch (error) {}
+    }, 3000); // 3 giây kiểm tra 1 lần
 });

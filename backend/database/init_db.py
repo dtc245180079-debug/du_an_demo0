@@ -459,6 +459,59 @@ TABLES_SQL = [
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_faq_cat_brand (category, brand)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    """,
+
+    # 25. Vouchers (Kho voucher dịch vụ & linh kiện chăm sóc KH)
+    """
+    CREATE TABLE IF NOT EXISTS vouchers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        discount_type VARCHAR(20) DEFAULT 'percent',
+        discount_value DECIMAL(15, 2) NOT NULL,
+        min_order_amount DECIMAL(15, 2) DEFAULT 0,
+        category VARCHAR(100) DEFAULT 'Dịch vụ & Linh kiện',
+        description TEXT,
+        is_active TINYINT DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    """,
+
+    # 26. Customer Vouchers (Voucher đã cấp cho khách hàng)
+    """
+    CREATE TABLE IF NOT EXISTS customer_vouchers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT NOT NULL,
+        voucher_code VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        discount_type VARCHAR(20) DEFAULT 'percent',
+        discount_value DECIMAL(15, 2) NOT NULL,
+        min_order_amount DECIMAL(15, 2) DEFAULT 0,
+        valid_until DATE,
+        status VARCHAR(30) DEFAULT 'active',
+        reason VARCHAR(255) DEFAULT 'Khuyến mãi chăm sóc sau bán hàng',
+        ticket_id INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_cust_vouch (customer_id),
+        INDEX idx_vouch_code (voucher_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    """,
+
+    # 27. Notifications (Nhật ký thông báo đa kênh Zalo, SMS, Email, Push)
+    """
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT NULL,
+        recipient VARCHAR(150) NOT NULL,
+        channel VARCHAR(30) DEFAULT 'zalo',
+        event_type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        status VARCHAR(30) DEFAULT 'sent',
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_notif_cust (customer_id),
+        INDEX idx_notif_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     """
 ]
 
@@ -637,7 +690,22 @@ def init_database():
             ("Thủ tục mua trả góp 0%", "Trả góp", "Tất cả", "Khách hàng hỏi cần giấy tờ gì để mua trả góp và trả trước bao nhiêu.", "Chỉ cần mang theo CCCD gắn chip. Hỗ trợ 2 hình thức: Trả góp 0% qua thẻ tín dụng (không cần trả trước) hoặc qua công ty tài chính (Home Credit/HD Saison, trả trước từ 10% giá trị máy)."),
             ("Chính sách 1 đổi 1 trong 30 ngày", "Bảo hành", "Tất cả", "Máy mới mua bị lỗi phần cứng có được đổi mới không?", "Trong vòng 30 ngày đầu tính từ ngày mua, nếu máy gặp lỗi phần cứng do nhà sản xuất (được kỹ thuật viên thẩm định), khách hàng được đổi ngay 1 máy mới nguyên seal cùng model hoàn toàn miễn phí."),
             ("Điện thoại tụt pin nhanh và nóng máy", "Kỹ thuật", "Samsung", "Máy tụt pin nhanh bất thường, máy nóng khi dùng 4G hoặc lướt web.", "Khách hàng thử tắt ứng dụng chạy ngầm và giảm độ sáng màn hình. Nếu máy tụt quá 20% pin/giờ khi không sử dụng, mời khách mang máy ra cửa hàng để kỹ thuật đo dòng và kiểm tra độ chai pin."),
-            ("Quên mật khẩu Apple ID / iCloud", "Kỹ thuật", "Apple", "Khách quên mật khẩu iCloud, không tải được ứng dụng hoặc bị khóa máy.", "Cửa hàng không thể tự mở khóa iCloud. Hướng dẫn khách truy cập iforgot.apple.com để đặt lại mật khẩu bằng SĐT đăng ký, hoặc mang hóa đơn mua hàng gốc đến để nhờ Apple hỗ trợ.")
+            ("Quên mật khẩu Apple ID / iCloud", "Kỹ thuật", "Apple", "Khách quên mật khẩu iCloud, không tải được ứng dụng hoặc bị khóa máy.", "Cửa hàng không thể tự mở khóa iCloud. Hướng dẫn khách truy cập iforgot.apple.com để đặt lại mật khẩu bằng SĐT đăng ký, hoặc mang hóa đơn mua hàng gốc đến để nhờ Apple hỗ trợ."),
+            ("Vỡ kính màn hình", "Kỹ thuật", "Tất cả", "Máy bị rơi vỡ mặt kính nhưng màn hình vẫn hiển thị và cảm ứng bình thường.", "Cửa hàng hỗ trợ ép kính lại với giá ưu đãi. Thời gian xử lý từ 2-4 tiếng tùy tình trạng và model máy."),
+            ("Thay pin chính hãng ở đâu", "Kỹ thuật", "Apple", "Pin iPhone bị chai, báo bảo trì, cần thay pin chính hãng.", "Cửa hàng có hỗ trợ thay pin dung lượng chuẩn hoặc dung lượng cao từ các hãng thứ 3 uy tín (Pisen, Energizer). Thay pin chính hãng Apple sẽ cần gửi về trung tâm bảo hành Apple."),
+            ("Camera bị mờ, rung", "Kỹ thuật", "Tất cả", "Mở camera thấy hình ảnh bị mờ, rung lắc hoặc có đốm đen.", "Nếu máy còn bảo hành và không có tác động vật lý, hãng sẽ hỗ trợ thay cụm camera mới. Hết bảo hành cửa hàng sẽ báo giá thay thế."),
+            ("Thu cũ đổi mới (Trade-in)", "Bán hàng", "Tất cả", "Khách muốn bán lại máy cũ để lên đời máy mới.", "Cửa hàng hỗ trợ thu mua máy cũ với giá cao. Máy cũ sẽ được định giá dựa trên ngoại hình và tình trạng hoạt động."),
+            ("Không nhận diện Face ID / Vân tay", "Kỹ thuật", "Tất cả", "Máy báo không thể thiết lập Face ID hoặc không nhận vân tay.", "Nếu lỗi do phần mềm, khởi động lại hoặc khôi phục cài đặt gốc có thể khắc phục. Nếu do phần cứng (cáp, cảm biến), cần kỹ thuật viên kiểm tra trực tiếp."),
+            ("Mất sóng, không nhận SIM", "Kỹ thuật", "Tất cả", "Máy báo không có dịch vụ, không nhận SIM dù đã thử SIM khác.", "Khách hàng thử bật tắt chế độ máy bay. Nếu không được, có thể do khe SIM hoặc IC sóng bị lỗi, cần mang ra cửa hàng để kiểm tra phần cứng."),
+            ("Loa bị rè, nghe gọi nhỏ", "Kỹ thuật", "Tất cả", "Loa ngoài hoặc loa trong nghe rất nhỏ, bị rè khi bật âm lượng lớn.", "Khách hàng dùng bàn chải mềm vệ sinh nhẹ màng loa. Nếu vẫn bị, kỹ thuật sẽ hỗ trợ vệ sinh chuyên sâu hoặc thay loa nếu màng loa đã rách."),
+            ("Sạc không vào pin", "Kỹ thuật", "Tất cả", "Cắm sạc nhưng máy không báo sạc hoặc sạc rất chậm.", "Thử đổi cáp sạc và củ sạc khác. Kiểm tra cổng sạc có bụi bẩn không. Nếu vẫn không được, có thể hỏng chân sạc hoặc IC sạc trên main."),
+            ("Bảo hành phụ kiện", "Bảo hành", "Tất cả", "Cáp, sạc, tai nghe mua kèm máy hoặc mua lẻ bị lỗi.", "Phụ kiện chính hãng mua kèm máy thường bảo hành 6-12 tháng tùy hãng. Phụ kiện mua lẻ bảo hành theo chính sách của nhà sản xuất, thường là 1 đổi 1 nếu lỗi do NSX."),
+            ("Màn hình bị chảy mực", "Kỹ thuật", "Tất cả", "Màn hình xuất hiện đốm đen, ngày càng lan rộng ra xung quanh.", "Chảy mực 100% do tác động vật lý (cấn, tì đè). Lỗi này bị từ chối bảo hành hãng, khách hàng phải chịu phí thay màn hình mới."),
+            ("Treo logo, chớp tắt", "Kỹ thuật", "Tất cả", "Khởi động máy chỉ hiện logo rồi tắt hoặc treo luôn ở logo.", "Có thể do lỗi xung đột phần mềm hoặc lỗi ổ cứng/mainboard. Cửa hàng sẽ thử chạy lại phần mềm trước, nếu không hết sẽ kiểm tra phần cứng."),
+            ("Hỗ trợ chuyển dữ liệu", "Dịch vụ", "Tất cả", "Khách hàng mua máy mới muốn chuyển dữ liệu từ máy cũ sang.", "Cửa hàng hỗ trợ chuyển toàn bộ danh bạ, ảnh, video, ứng dụng miễn phí khi khách mua máy mới. Thời gian tùy thuộc vào dung lượng dữ liệu."),
+            ("Lỗi cập nhật iOS/Android", "Phần mềm", "Tất cả", "Đang cập nhật phần mềm thì máy báo lỗi, không lên nguồn.", "Khách hàng mang máy ra cửa hàng, kỹ thuật viên sẽ dùng máy tính để chạy lại (restore/flash) bản Rom gốc mới nhất cho máy."),
+            ("Quên mật khẩu màn hình", "Phần mềm", "Tất cả", "Khách hàng quên mật khẩu mở khóa màn hình điện thoại.", "Cần khôi phục cài đặt gốc qua máy tính (sẽ mất toàn bộ dữ liệu trên máy). Yêu cầu khách phải nhớ mật khẩu iCloud/Google Account để kích hoạt lại."),
+            ("Lỗi kết nối WiFi/Bluetooth", "Kỹ thuật", "Tất cả", "Máy không dò được WiFi, Bluetooth hoặc kết nối bị chập chờn.", "Thử Reset lại cài đặt mạng trong phần Cài đặt. Nếu không cải thiện, có thể do chip WiFi/Bluetooth trên main bị lỗi, cần can thiệp phần cứng.")
         ]
         cursor.executemany("""
             INSERT INTO support_faqs (issue_name, category, brand, symptom, solution)

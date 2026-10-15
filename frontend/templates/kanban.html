@@ -1,60 +1,93 @@
 {% extends "base.html" %}
 
-{% block title %}Bảng Kanban Cơ Hội Bán Hàng - CRM Care AI{% endblock %}
+{% block title %}Bảng Kanban Ticket Hỗ Trợ - CSKH Mobile{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 20px;">
     <div>
-        <h1 class="page-title">BẢNG THEO DÕI DOANH THU & CƠ HỘI BÁN HÀNG (KANBAN)</h1>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 800; color: #1e293b;">
+            BẢNG KANBAN TIẾP NHẬN & XỬ LÝ SỰ CỐ KỸ THUẬT
+        </h1>
         <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
-            Quản lý phễu cơ hội bán hàng và tư vấn nâng cấp thiết bị từ tiếp cận ban đầu đến chốt đơn thành công
+            Điều phối quy trình hỗ trợ thiết bị: Tiếp nhận &rarr; Kiểm tra máy &rarr; Chờ linh kiện &rarr; Sửa chữa &rarr; Bàn giao đóng yêu cầu
         </p>
     </div>
-    <div class="toolbar">
-        <button class="btn btn-add" onclick="document.getElementById('modal-create-opp').style.display='flex'">
-            Thêm cơ hội mới
+    <div class="toolbar" style="display: flex; gap: 10px;">
+        <button class="btn btn-add" onclick="document.getElementById('modal-create-ticket').style.display='flex'">
+            Tiếp nhận Ticket mới
         </button>
+        <a href="/tickets" class="btn btn-secondary">
+            Xem dạng danh sách
+        </a>
     </div>
 </div>
 
-<!-- Kanban Board Columns -->
-<div class="kanban-board">
+<!-- Kanban Board Columns (6 Stages Workflow) -->
+<div class="kanban-board" style="display: grid; grid-template-columns: repeat(6, minmax(230px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 20px;">
     {% set stages = [
-        ('lead', 'Mới Tiếp Cận', '#64748b'),
-        ('contacted', 'Đang Tư Vấn', '#3b82f6'),
-        ('proposal', 'Đã Báo Giá', '#f59e0b'),
-        ('negotiation', 'Đàm Phán', '#8b5cf6'),
-        ('won', 'Thành Công (Won)', '#10b981'),
-        ('lost', 'Thất Bại (Lost)', '#ef4444')
+        ('open', '1. Tiếp Nhận', '#f59e0b'),
+        ('in_progress', '2. Đang Xử Lý', '#3b82f6'),
+        ('pending_customer', '3. Chờ Khách Phản Hồi', '#8b5cf6'),
+        ('waiting_vendor', '4. Chờ Hãng Bảo Hành', '#ec4899'),
+        ('resolved', '5. Hoàn Thành', '#10b981'),
+        ('closed', '6. Đóng Ticket', '#64748b')
     ] %}
 
     {% for stage_key, stage_label, stage_color in stages %}
-    <div class="kanban-column" id="col-{{ stage_key }}">
-        <div class="kanban-col-header" style="border-bottom-color: {{ stage_color }};">
-            <span class="kanban-col-title" style="color: {{ stage_color }};">{{ stage_label }}</span>
-            <span class="badge" style="background: white; border: 1px solid #cbd5e1;">
-                {% set stage_items = opportunities|selectattr('stage', 'equalto', stage_key)|list %}
+    <div class="kanban-column" id="col-{{ stage_key }}" style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; min-height: 520px;">
+        <div class="kanban-col-header" style="padding: 12px 14px; border-bottom: 3px solid {{ stage_color }}; background: white; border-top-left-radius: 9px; border-top-right-radius: 9px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="kanban-col-title" style="color: #1e293b; font-weight: 700; font-size: 13px;">
+                {{ stage_label }}
+            </span>
+            <span class="badge" style="background: {{ stage_color }}15; color: {{ stage_color }}; font-weight: bold; border-radius: 12px; padding: 2px 8px; font-size: 12px;">
+                {% if stage_key == 'pending_customer' %}
+                    {% set stage_items = tickets|selectattr('status', 'in', ['pending_customer', 'pending'])|list %}
+                {% else %}
+                    {% set stage_items = tickets|selectattr('status', 'equalto', stage_key)|list %}
+                {% endif %}
                 {{ stage_items|length }}
             </span>
         </div>
 
-        <div style="flex: 1; overflow-y: auto;">
+        <div style="flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px;">
             {% for item in stage_items %}
-            <div class="kanban-card">
-                <div class="kanban-card-title">{{ item.title }}</div>
-                <div class="kanban-card-val">{{ "{:,.0f}".format(item.value) }} ₫</div>
-                <div style="font-size: 12px; color: #374151; margin-bottom: 6px;">
-                    {{ item.customer_name or 'Khách tiềm năng' }}
-                    {% if item.customer_phone %}<br>ĐT: {{ item.customer_phone }}{% endif %}
+            <div class="kanban-card" style="background: white; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <!-- Header: Code + Priority -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <a href="/tickets/{{ item.id }}" style="font-weight: 800; font-size: 12px; color: var(--primary); text-decoration: none;">
+                        #{{ item.ticket_code }}
+                    </a>
+                    <span class="badge priority-{{ item.priority }}" style="font-size: 10px; padding: 2px 6px;">
+                        {{ item.priority|capitalize }}
+                    </span>
                 </div>
-                <div class="kanban-card-footer">
-                    <span>Xác suất: <strong>{{ item.probability }}%</strong></span>
-                    {% if item.agent_name %}<span style="color: var(--primary);">{{ item.agent_name }}</span>{% endif %}
+
+                <!-- Subject -->
+                <div style="font-weight: 600; font-size: 13px; color: #1e293b; margin-bottom: 8px; line-height: 1.3;">
+                    <a href="/tickets/{{ item.id }}" style="color: inherit; text-decoration: none;">{{ item.subject }}</a>
                 </div>
-                <!-- Move Stage Dropdown -->
-                <div style="margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 6px; display: flex; justify-content: flex-end;">
-                    <select onchange="updateOppStage({{ item.id }}, this.value)" style="font-size: 11px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        <option value="">Chuyển cột</option>
+
+                <!-- Customer Details -->
+                <div style="font-size: 12px; color: #475569; background: #f8fafc; padding: 6px 8px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="font-weight: 600;">Khách hàng: {{ item.customer_name or 'Khách chưa đặt tên' }}</div>
+                    {% if item.customer_phone %}
+                    <div style="color: #64748b; font-size: 11px;">SĐT: {{ item.customer_phone }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Footer: Agent & Channel -->
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #64748b; margin-bottom: 8px;">
+                    <span>Kênh: <strong style="text-transform: uppercase;">{{ item.channel }}</strong></span>
+                    <span>{{ item.assigned_agent_name or 'Chưa phân công' }}</span>
+                </div>
+
+                <!-- Actions: Move Stage & Delete -->
+                <div style="margin-top: 6px; border-top: 1px dashed #e2e8f0; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <button onclick="if(confirm('Bạn có chắc chắn muốn xoá ticket này khỏi hệ thống?')) deleteTicketItem({{ item.id }})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 11px; padding: 2px 4px; font-weight: 600;">
+                        Xoá
+                    </button>
+                    <select onchange="updateTicketStage({{ item.id }}, this.value)" style="font-size: 11px; padding: 3px 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; cursor: pointer;">
+                        <option value="">Chuyển trạng thái</option>
                         {% for sk, sl, sc in stages %}
                             {% if sk != stage_key %}
                             <option value="{{ sk }}">{{ sl }}</option>
@@ -64,50 +97,66 @@
                 </div>
             </div>
             {% endfor %}
+
+            {% if stage_items|length == 0 %}
+            <div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 30px 10px;">
+                Không có ticket nào
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endfor %}
 </div>
 
-<!-- Modal Create Opportunity -->
-<div id="modal-create-opp" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-    <div class="card" style="width: 500px; max-width: 90%; margin: 0; background: white; padding: 25px;">
-        <div class="card-title">
-            <span>Thêm Cơ Hội Bán Hàng Mới</span>
-            <span onclick="document.getElementById('modal-create-opp').style.display='none'" style="cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-muted);">Đóng</span>
+<!-- Modal: Tạo Ticket Mới Trong Bảng Kanban -->
+<div id="modal-create-ticket" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 520px; max-width: 90%; margin: 0; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+            <span style="font-size: 17px; font-weight: 800; color: #1e293b;">Tiếp Nhận Ticket Hỗ Trợ Mới</span>
+            <span onclick="document.getElementById('modal-create-ticket').style.display='none'" style="cursor: pointer; font-size: 18px; font-weight: 600; color: var(--text-muted);">&times;</span>
         </div>
-        <form method="POST" action="/api/kanban/create">
-            <div class="form-group">
-                <label>Tiêu đề cơ hội:</label>
-                <input type="text" name="title" class="form-control" required placeholder="VD: Nâng cấp iPhone 15 Pro Max 256GB">
+        <form method="POST" action="/api/kanban/ticket-create">
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-weight: 600; font-size: 13px;">Tiêu đề sự cố / Yêu cầu khách hàng:</label>
+                <input type="text" name="subject" class="form-control" required placeholder="VD: Khách báo sập nguồn liên tục, chai pin iPhone 14...">
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div class="form-group">
-                    <label>Tên khách hàng:</label>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; font-size: 13px;">Tên khách hàng:</label>
                     <input type="text" name="customer_name" class="form-control" required placeholder="Nguyễn Văn A">
                 </div>
-                <div class="form-group">
-                    <label>Số điện thoại:</label>
-                    <input type="tel" name="customer_phone" class="form-control" placeholder="0901234567">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; font-size: 13px;">Số điện thoại:</label>
+                    <input type="tel" name="customer_phone" class="form-control" required placeholder="0901234567" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div class="form-group">
-                    <label>Giá trị dự kiến (VNĐ):</label>
-                    <input type="number" name="value" class="form-control" required placeholder="30000000">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; font-size: 13px;">Kênh tiếp nhận:</label>
+                    <select name="channel" class="form-control">
+                        <option value="web">Website Livechat</option>
+                        <option value="zalo">Zalo OA</option>
+                        <option value="hotline">Tổng đài Hotline</option>
+                        <option value="facebook">Facebook Fanpage</option>
+                        <option value="email">Email</option>
+                    </select>
                 </div>
-                <div class="form-group">
-                    <label>Giai đoạn bắt đầu:</label>
-                    <select name="stage" class="form-control">
-                        <option value="lead">Mới tiếp cận</option>
-                        <option value="contacted">Đang tư vấn</option>
-                        <option value="proposal">Đã báo giá</option>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; font-size: 13px;">Mức độ ưu tiên:</label>
+                    <select name="priority" class="form-control">
+                        <option value="low">Thấp</option>
+                        <option value="medium" selected>Trung bình</option>
+                        <option value="high">Cao</option>
+                        <option value="urgent">Khẩn cấp</option>
                     </select>
                 </div>
             </div>
-            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="submit" class="btn btn-save">Lưu cơ hội</button>
-                <button type="button" class="btn btn-back" onclick="document.getElementById('modal-create-opp').style.display='none'">Hủy</button>
+
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-create-ticket').style.display='none'">Hủy</button>
+                <button type="submit" class="btn btn-primary" style="font-weight: 600;">Lưu & Mở Ticket</button>
             </div>
         </form>
     </div>
@@ -116,10 +165,10 @@
 
 {% block extra_scripts %}
 <script>
-    async function updateOppStage(oppId, newStage) {
+    async function updateTicketStage(ticketId, newStage) {
         if (!newStage) return;
         try {
-            const res = await fetch(`/api/kanban/${oppId}/stage`, {
+            const res = await fetch(`/api/kanban/${ticketId}/stage`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ stage: newStage })
@@ -128,7 +177,24 @@
             if (data.success) {
                 location.reload();
             } else {
-                alert("Lỗi: " + data.message);
+                alert("Lỗi: " + (data.message || "Không thể cập nhật trạng thái."));
+            }
+        } catch (err) {
+            alert("Không thể kết nối tới máy chủ.");
+        }
+    }
+
+    async function deleteTicketItem(ticketId) {
+        try {
+            const res = await fetch(`/api/kanban/${ticketId}/delete`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"}
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert("Lỗi: " + (data.message || "Không thể xoá ticket."));
             }
         } catch (err) {
             alert("Không thể kết nối tới máy chủ.");

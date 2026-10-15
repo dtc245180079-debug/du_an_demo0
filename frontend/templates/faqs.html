@@ -1,32 +1,79 @@
 {% extends "base.html" %}
 
-{% block title %}Quản lý Dữ liệu Hỗ trợ Khách hàng - FAQs{% endblock %}
+{% block title %}Kho Hướng Dẫn Xử Lý & FAQs - CSKH Mobile{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">HỆ THỐNG QUẢN LÝ DỮ LIỆU HỖ TRỢ KHÁCH HÀNG</h1>
+        <h1 class="page-title">KHO HƯỚNG DẪN XỬ LÝ & CƠ SỞ TRI THỨC KỸ THUẬT</h1>
         <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
-            Cơ sở tri thức (Knowledge Base) phục vụ phản hồi khách hàng và cung cấp ngữ cảnh cho AI RAG
+            Cơ sở tri thức (Knowledge Base) tra cứu giải pháp xử lý lỗi điện thoại, chính sách bảo hành và hỗ trợ ngữ cảnh cho AI (Tổng cộng: <strong>{{ faqs|length }} câu hỏi FAQ</strong>)
         </p>
     </div>
     {% if session.get('role') in ['agent', 'admin'] %}
     <div class="toolbar">
-        <a href="/add" class="btn btn-add">Thêm dữ liệu hỗ trợ</a>
+        <a href="/add-faq" class="btn btn-add">Thêm dữ liệu hỗ trợ</a>
     </div>
     {% endif %}
 </div>
 
-<!-- Thanh tìm kiếm -->
-<div class="filter-bar">
-    <form method="GET" action="/" class="search-box">
+<!-- AI RAG ASSISTANT TRỰC QUAN TRÊN KHO TRI THỨC -->
+<div class="card" style="margin-bottom: 22px; padding: 22px; background: linear-gradient(135deg, #f0f7ff 0%, #e0f2fe 100%); border: 1px solid #bfdbfe; border-radius: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: #2563eb; color: white; display: grid; place-items: center; font-size: 14px;">
+                <i class="fa-solid fa-brain"></i>
+            </div>
+            <strong style="font-size: 15px; color: #1e3a8a;">AI RAG - TRỢ LÝ TRA CỨU TRI THỨC BẢO HÀNH KỸ THUẬT</strong>
+        </div>
+        <span class="badge" style="background: white; color: #2563eb; font-weight: 800; border: 1px solid #bfdbfe;">
+            RAG ACTIVE
+        </span>
+    </div>
+    <p style="font-size: 13px; color: #3b82f6; margin-bottom: 14px;">
+        Hệ thống AI RAG sẽ đối soát trực tiếp toàn bộ kho cẩm nang lỗi (Face ID, Pin, Màn hình, Camera, SIM) và tổng hợp giải pháp chẩn đoán tức thì.
+    </p>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <input type="text" id="rag-input" class="form-control" style="background: white;" placeholder="Nhập câu hỏi (VD: iPhone 14 bị sọc màn hình có được thay miễn phí không?)..." onkeydown="if(event.key==='Enter') executeFaqRag()">
+        <button type="button" class="btn btn-primary" style="white-space: nowrap; font-weight: 700; padding: 10px 18px;" onclick="executeFaqRag()">
+            <i class="fa-solid fa-magnifying-glass me-1"></i> AI Phân Tích & Trả Lời
+        </button>
+    </div>
+
+    <!-- Quick questions -->
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-sm" style="background: white; border: 1px solid #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="fillAndSearchRag('Lỗi không nhận diện Face ID TrueDepth trên iPhone')">Lỗi Face ID</button>
+        <button type="button" class="btn btn-sm" style="background: white; border: 1px solid #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="fillAndSearchRag('Pin chai tụt nhanh sập nguồn và chính sách bảo hành pin')">Lỗi Pin & Sạc</button>
+        <button type="button" class="btn btn-sm" style="background: white; border: 1px solid #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="fillAndSearchRag('Màn hình bị sọc xanh và liệt cảm ứng đổi trả thế nào')">Lỗi Màn Hình</button>
+        <button type="button" class="btn btn-sm" style="background: white; border: 1px solid #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="fillAndSearchRag('Camera bị rung giật và đốm mờ khi chụp')">Lỗi Camera</button>
+        <button type="button" class="btn btn-sm" style="background: white; border: 1px solid #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="fillAndSearchRag('Máy không nhận SIM và mất sóng 5G')">Lỗi SIM & Sóng</button>
+    </div>
+
+    <!-- Hộp hiển thị câu trả lời AI RAG -->
+    <div id="rag-result-box" style="display: none; margin-top: 14px; background: white; border: 1px solid #93c5fd; border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.55; color: #1e293b;"></div>
+</div>
+
+<!-- Thanh tìm kiếm & Bộ lọc nhanh chuyên mục -->
+<div class="filter-bar" style="margin-bottom: 20px;">
+    <form method="GET" action="/faqs" class="search-box" style="margin-bottom: 12px;">
         <input type="text" name="keyword" placeholder="Tìm sự cố, biểu hiện, chính sách, thương hiệu..."
             value="{{ keyword if keyword else '' }}">
         <button type="submit" class="btn btn-primary">Tìm kiếm</button>
         {% if keyword %}
-        <a href="/" class="btn btn-secondary">Đặt lại</a>
+        <a href="/faqs" class="btn btn-secondary">Đặt lại</a>
         {% endif %}
     </form>
+
+    <!-- Nút lọc nhanh theo 5 danh mục cốt lõi -->
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <a href="/faqs" class="btn btn-sm {% if not keyword %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 12px;">Tất cả</a>
+        <a href="/faqs?keyword=Face ID" class="btn btn-sm {% if keyword == 'Face ID' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 12px;">Lỗi Face ID</a>
+        <a href="/faqs?keyword=Pin" class="btn btn-sm {% if keyword == 'Pin' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 12px;">Lỗi Pin & Sạc</a>
+        <a href="/faqs?keyword=Màn hình" class="btn btn-sm {% if keyword == 'Màn hình' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 12px;">Lỗi Màn Hình</a>
+        <a href="/faqs?keyword=Camera" class="btn btn-sm {% if keyword == 'Camera' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 12px;">Lỗi Camera</a>
+        <a href="/faqs?keyword=SIM" class="btn btn-sm {% if keyword == 'SIM' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 12px;">Lỗi SIM</a>
+        <a href="/faqs?keyword=Bảo hành" class="btn btn-sm {% if keyword == 'Bảo hành' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 12px;">Chính Sách Bảo Hành</a>
+    </div>
 </div>
 
 <!-- Bảng dữ liệu -->
@@ -74,4 +121,63 @@
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function fillAndSearchRag(text) {
+        document.getElementById('rag-input').value = text;
+        executeFaqRag();
+    }
+
+    async function executeFaqRag() {
+        const query = document.getElementById('rag-input').value.trim();
+        if (!query) return;
+
+        const box = document.getElementById('rag-result-box');
+        box.style.display = 'block';
+        box.innerHTML = `<div style="color: #2563eb; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-spinner fa-spin"></i> <span>AI RAG đang tìm kiếm đối soát trong cơ sở tri thức kỹ thuật...</span>
+        </div>`;
+
+        try {
+            const res = await fetch('/api/ai/rag-search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ query: query })
+            });
+            const data = await res.json();
+            if (data.success && data.ai_answer) {
+                let html = `
+                    <div style="font-weight: 800; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">
+                        Kết Quả Chẩn Đoán & Giải Pháp Kỹ Thuật (AI RAG):
+                    </div>
+                    <div style="white-space: pre-line; line-height: 1.6; color: #334155; margin-bottom: 12px;">
+                        ${data.ai_answer}
+                    </div>
+                `;
+
+                if (data.faqs && data.faqs.length > 0) {
+                    html += `
+                        <div style="border-top: 1px dashed #bfdbfe; padding-top: 8px; margin-top: 8px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">
+                                Tài liệu tham chiếu từ Kho Tri Thức:
+                            </span>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                    `;
+                    data.faqs.forEach(f => {
+                        html += `<span class="badge" style="background: #eff6ff; color: #2563eb; font-size: 11px;">#${f.id || ''} ${f.issue_name || ''}</span>`;
+                    });
+                    html += `</div></div>`;
+                }
+
+                box.innerHTML = html;
+            } else {
+                box.innerHTML = `<div style="color: #dc2626;">Không tìm thấy câu trả lời. Vui lòng thử từ khóa khác.</div>`;
+            }
+        } catch (e) {
+            box.innerHTML = `<div style="color: #dc2626;">Lỗi kết nối tới AI RAG Service.</div>`;
+        }
+    }
+</script>
 {% endblock %}

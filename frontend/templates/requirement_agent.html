@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}AI Requirement Agent (Senior BA & Architect) - CSKH Mobile{% endblock %}
+
+{% block extra_head %}
+<!-- Markdown parser library -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+    .markdown-body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #24292e;
+    }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+        color: #1e293b;
+        font-weight: 700;
+        margin-top: 1.2em;
+        margin-bottom: 0.6em;
+        padding-bottom: 0.3em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .markdown-body ul {
+        padding-left: 24px;
+        margin-bottom: 1em;
+    }
+    .markdown-body li {
+        margin-bottom: 4px;
+    }
+    .markdown-body strong {
+        color: #1e40af;
+    }
+    .sample-btn {
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        color: #334155;
+        transition: all 0.2s;
+        text-align: left;
+    }
+    .sample-btn:hover {
+        background: #e2e8f0;
+        border-color: #94a3b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 800; color: #1e293b;">
+            AI REQUIREMENT AGENT (SENIOR BA & SYSTEM ARCHITECT)
+        </h1>
+        <p style="color: var(--text-muted); margin: 6px 0 0 0; font-size: 14px;">
+            Hệ thống AI Agent tiếp nhận yêu cầu thô, tự động phân tích điểm mờ thấu (Ambiguity), dự báo rủi ro kỹ thuật và phân rã công việc (Task Decomposition) cho đội ngũ kỹ thuật.
+        </p>
+    </div>
+    {% if saved_filename %}
+    <div>
+        <a href="/agent/outputs/{{ saved_filename }}" class="btn btn-secondary" style="display: flex; align-items: center; gap: 6px;">
+            Tải file đặc tả ({{ saved_filename }})
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div style="display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start;">
+    <!-- CỘT TRÁI: FORM ĐẦU VÀO & MẪU PROMPT & LỊCH SỬ -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Form nhập yêu cầu -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 14px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                <span>Nhập Yêu Cầu Tính Năng Thô</span>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-danger" style="margin-bottom: 14px; font-size: 13px;">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST" action="/agent">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-weight: 600; font-size: 13px;">Mô tả yêu cầu hệ thống/tính năng:</label>
+                    <textarea id="requirement" name="requirement" class="form-control" rows="8" placeholder="Nhập yêu cầu từ khách hàng hoặc Product Owner..." required style="font-size: 13px; line-height: 1.5;">{{ user_requirement }}</textarea>
+                </div>
+
+                <!-- Nút chạy phân tích -->
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 700; padding: 10px; font-size: 14px;">
+                    Bắt Đầu AI Phân Tích (Run Agent)
+                </button>
+            </form>
+
+            <!-- Kịch bản mẫu 1-click -->
+            <div style="margin-top: 18px; border-top: 1px dashed #e2e8f0; padding-top: 14px;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px; text-transform: uppercase;">
+                    Chọn Nhanh Kịch Bản Mẫu (Presets):
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button type="button" class="sample-btn" onclick="fillPreset(1)">
+                        <strong>Kịch bản 1:</strong> Tiếp nhận bảo hành tự động theo IMEI thiết bị
+                    </button>
+                    <button type="button" class="sample-btn" onclick="fillPreset(2)">
+                        <strong>Kịch bản 2:</strong> Sinh trắc học & Xác thực OTP qua Zalo
+                    </button>
+                    <button type="button" class="sample-btn" onclick="fillPreset(3)">
+                        <strong>Kịch bản 3:</strong> Ví Voucher & Gợi ý ưu đãi tự động
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danh sách file đặc tả đã lưu trong Agent/outputs/ -->
+        <div class="card" style="margin: 0; padding: 20px;">
+            <div class="card-title" style="margin-bottom: 12px; font-size: 14px; font-weight: 700; color: #1e293b;">
+                <span>Bản Đặc Tả Đã Lưu (Agent Outputs)</span>
+                <span class="badge" style="background: #e2e8f0; color: #475569;">{{ recent_specs|length }}</span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto;">
+                {% if recent_specs %}
+                    {% for sp in recent_specs %}
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <strong style="color: #1e40af; cursor: pointer;" onclick="loadSavedSpec({{ loop.index0 }})" title="Xem nội dung">
+                                {{ sp.filename }}
+                            </strong>
+                            <a href="/agent/outputs/{{ sp.filename }}" style="color: var(--primary); text-decoration: none;" title="Tải về">
+                                Tải
+                            </a>
+                        </div>
+                        <div style="color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ sp.title }}
+                        </div>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                            {{ sp.modified_time }} • {{ sp.size_kb }} KB
+                        </div>
+                        <!-- Ẩn nội dung raw để load khi click -->
+                        <div id="spec-raw-{{ loop.index0 }}" style="display: none;">{{ sp.content }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="text-align: center; color: var(--text-muted); padding: 15px; font-size: 13px;">
+                        Chưa có file output nào được lưu.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: KẾT QUẢ PHÂN TÍCH MARKDOWN VỚI 8 TABS CHUẨN SENIOR BA -->
+    <div class="card" style="margin: 0; padding: 20px; min-height: 600px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <span style="font-size: 16px; font-weight: 700; color: #1e293b;" id="result-header-title">
+                    Tài Liệu Đặc Tả & Kiến Trúc Hệ Thống (Senior BA & Architect)
+                </span>
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; margin-left: 8px; font-weight: 600;">8 Tabs Chuẩn Hóa</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="copyResultContent()" id="btn-copy">
+                    Sao chép tab này
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="copyFullContent()" id="btn-copy-all">
+                    Sao chép toàn bộ
+                </button>
+            </div>
+        </div>
+
+        <!-- THANH TABS 8 CHUYÊN MỤC CỦA SENIOR BA (LUÔN HIỂN THỊ) -->
+        <div class="ba-tabs-container" style="margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;">
+            <button type="button" class="ba-tab-btn active" onclick="switchBaTab(0, this)">Toàn bộ đặc tả</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(1, this)">1. User Story</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(2, this)">2. Use Case</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(3, this)">3. Functional Req</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(4, this)">4. Non-Functional</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(5, this)">5. Database Design</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(6, this)">6. REST API</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(7, this)">7. Sprint Tasks</button>
+            <button type="button" class="ba-tab-btn" onclick="switchBaTab(8, this)">8. Risk Analysis</button>
+        </div>
+
+        {% if result %}
+            <div class="markdown-body" id="render-target" style="min-height: 400px;"></div>
+            <div id="result-content" style="display: none;">{{ result }}</div>
+        {% else %}
+            <div class="markdown-body" id="render-target" style="min-height: 400px;">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 420px; color: #94a3b8; text-align: center;">
+                    <div style="width: 56px; height: 56px; border-radius: 14px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: #64748b;">
+                        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <h3 style="font-size: 18px; color: #475569; margin: 0 0 8px 0; border: none;">Chưa Có Kết Quả Phân Tích</h3>
+                    <p style="font-size: 14px; max-width: 480px; line-height: 1.5;">
+                        Hãy nhập yêu cầu tính năng ở cột bên trái hoặc nhấp chọn một <strong>Kịch bản mẫu</strong>, sau đó nhấn <strong>Bắt Đầu AI Phân Tích</strong>. AI sẽ tự động sinh tài liệu chuẩn gồm đầy đủ 8 Tab: User Story, Use Case, FR, NFR, Database, API, Sprint Tasks và Risk Analysis.
+                    </p>
+                </div>
+            </div>
+            <div id="result-content" style="display: none;"></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+    .ba-tab-btn {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-bottom: none;
+        border-radius: 6px 6px 0 0;
+        padding: 7px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s ease-in-out;
+    }
+    .ba-tab-btn:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+    .ba-tab-btn.active {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+    }
+</style>
+<script>
+    const presets = {
+        1: `Thêm tính năng Tiếp nhận bảo hành thiết bị di động tự động qua số IMEI:\n- Khách hàng hoặc kỹ thuật viên nhập số IMEI 15 số trên hệ thống.\n- Hệ thống tự động tra cứu cơ sở dữ liệu để kiểm tra tình trạng hiệu lực của sổ bảo hành điện tử.\n- Khách hàng chọn loại sự cố kỹ thuật (Màn hình bị sọc, Pin chai/sập nguồn, Lỗi âm thanh/loa, Không nhận sạc).\n- Hệ thống tự động khởi tạo Ticket phân công cho kỹ thuật viên phù hợp và gửi tin nhắn xác nhận cho khách hàng.`,
+        2: `Thêm tính năng đăng nhập bằng sinh trắc học (Fingerprint/FaceID) và gửi mã OTP xác thực qua Zalo cho ứng dụng di động sau bán hàng.\nYêu cầu tích hợp Biometric SDK trên iOS/Android, kết nối Zalo Cloud API để gửi mã xác thực, và xây dựng cơ chế Fallback tự động khi người dùng không có kết nối internet hoặc không cài ứng dụng Zalo.`,
+        3: `Thêm tính năng Ví Voucher Chăm sóc Khách hàng và Tự động gợi ý voucher xoa dịu khi khách hàng phản ánh khiếu nại hoặc lỗi thiết bị.\nKhách hàng có thể lưu voucher, tra cứu hạn dùng và hệ thống CSKH tự động đề xuất mã voucher giảm giá phí sửa chữa hoặc thay linh kiện dựa trên mức độ hài lòng CSAT.`
+    };
+
+    let fullMarkdown = "";
+    let tabSections = {};
+
+    function fillPreset(id) {
+        const area = document.getElementById('requirement');
+        if (area && presets[id]) {
+            area.value = presets[id];
+            area.focus();
+        }
+    }
+
+    function parseSections(markdown) {
+        tabSections = { 0: markdown };
+        // Phân rã markdown theo các tiêu đề H2 (## 1., ## 2., ...)
+        const sectionRegex = /##\s*([1-8])[\.\s]+([^\n\r]+)([\s\S]*?)(?=(?:##\s*[1-8][\.\s]+)|$)/g;
+        let match;
+        while ((match = sectionRegex.exec(markdown)) !== null) {
+            const tabNum = parseInt(match[1]);
+            const title = match[2].trim();
+            const content = match[3].trim();
+            tabSections[tabNum] = `## ${tabNum}. ${title}\n\n${content}`;
+        }
+    }
+
+    function switchBaTab(tabIndex, btnEl) {
+        // Cập nhật active button
+        document.querySelectorAll('.ba-tab-btn').forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+
+        const target = document.getElementById("render-target");
+        let contentToShow = tabSections[tabIndex] || tabSections[0];
+        if (!contentToShow && tabIndex > 0) {
+            contentToShow = `> **Chưa tìm thấy mục số ${tabIndex} tương ứng.** Bạn có thể xem tab **Toàn bộ đặc tả** để thấy toàn bộ nội dung phân tích.`;
+        }
+
+        window.currentTabMarkdown = contentToShow;
+        target.innerHTML = marked.parse(contentToShow);
+    }
+
+    function renderMarkdown(text) {
+        fullMarkdown = text;
+        parseSections(text);
+        const target = document.getElementById("render-target");
+        if (target && text) {
+            target.innerHTML = marked.parse(text);
+            window.currentTabMarkdown = text;
+        }
+    }
+
+    function loadSavedSpec(index) {
+        const rawEl = document.getElementById('spec-raw-' + index);
+        if (rawEl) {
+            renderMarkdown(rawEl.textContent);
+            document.getElementById('result-header-title').textContent = "Đang xem bản đặc tả lưu trữ #" + (index + 1);
+            document.querySelectorAll('.ba-tab-btn').forEach((b, idx) => {
+                b.classList.toggle('active', idx === 0);
+            });
+        }
+    }
+
+    function copyResultContent() {
+        const content = window.currentTabMarkdown || fullMarkdown;
+        if (content) {
+            navigator.clipboard.writeText(content).then(() => {
+                const btn = document.getElementById("btn-copy");
+                const old = btn.textContent;
+                btn.textContent = "Đã chép tab này!";
+                setTimeout(() => btn.textContent = old, 2000);
+            });
+        }
+    }
+
+    function copyFullContent() {
+        if (fullMarkdown) {
+            navigator.clipboard.writeText(fullMarkdown).then(() => {
+                const btn = document.getElementById("btn-copy-all");
+                const old = btn.textContent;
+                btn.textContent = "Đã chép toàn bộ!";
+                setTimeout(() => btn.textContent = old, 2000);
+            });
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const rawEl = document.getElementById("result-content");
+        if (rawEl && rawEl.textContent.trim()) {
+            renderMarkdown(rawEl.textContent);
+        }
+    });
+</script>
+{% endblock %}
+

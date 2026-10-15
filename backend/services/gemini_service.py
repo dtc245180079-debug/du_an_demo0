@@ -29,18 +29,16 @@ def call_gemini(prompt):
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
-        for model_name in AVAILABLE_MODELS:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt
-                )
-                if response and response.text:
-                    return response.text
-            except Exception:
-                continue
+        model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+        if response and response.text:
+            return response.text
     except Exception as e:
-        print("[GEMINI] Lỗi khởi tạo client:", e)
+        print(f"[GEMINI] Lỗi gọi model {os.getenv('GEMINI_MODEL')}:", e)
 
     # Cơ chế fallback mở rộng
     from services.ai_service import ai_service
@@ -55,13 +53,17 @@ def analyze_support_question(question):
     {{
         "category": null,
         "brand": null,
-        "keywords": null
+        "keywords": null,
+        "budget_min": null,
+        "budget_max": null
     }}
 
     Quy tắc:
-    1. category: Phân loại câu hỏi vào nhóm (Kỹ thuật, Bảo hành, Trả góp, Đơn hàng). Nếu không rõ để null.
+    1. category: Phân loại câu hỏi vào nhóm (Kỹ thuật, Bảo hành, Trả góp, Đơn hàng, Tư vấn mua hàng). Nếu không rõ để null.
     2. brand: Thương hiệu khách nhắc đến (Apple, Samsung, Xiaomi, Oppo...). Nếu hỏi chung chung để null.
     3. keywords: 1 cụm từ khóa ngắn gọn cốt lõi nhất của vấn đề (ví dụ: 'sọc màn hình', 'trả góp', 'đổi trả', 'tụt pin', 'iCloud').
+    4. budget_min: Số tiền tối thiểu khách muốn mua (kiểu số nguyên). Ví dụ: "trên 5 triệu" -> 5000000. Nếu không có để null.
+    5. budget_max: Số tiền tối đa khách muốn mua (kiểu số nguyên). Ví dụ: "dưới 10 triệu" -> 10000000. Nếu không có để null.
 
     Câu hỏi của khách: {question}
     """

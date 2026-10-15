@@ -1,274 +1,391 @@
 {% extends "base.html" %}
 
-{% block title %}Chi tiết Ticket {{ ticket.ticket_code }} - CRM Care AI{% endblock %}
+{% block title %}Ticket {{ ticket.ticket_code }} · CSKH Mobile{% endblock %}
 
-{% block content %}
-<div class="page-header">
-    <div>
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-            <a href="/tickets" style="text-decoration: none; color: var(--text-muted);">Quay lại danh sách</a>
-            <span class="badge badge-channel badge-{{ ticket.channel }}">{{ ticket.channel }}</span>
-            <span class="badge priority-{{ ticket.priority }}">{{ ticket.priority|capitalize }}</span>
-        </div>
-        <h1 class="page-title" style="font-size: 22px;">{{ ticket.ticket_code }}: {{ ticket.subject }}</h1>
-    </div>
-
-    <!-- Quick Actions Header -->
-    <div style="display: flex; align-items: center; gap: 12px;">
-        <!-- Status Selector Form -->
-        <form method="POST" action="/tickets/{{ ticket.id }}/status" style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-size: 13px; font-weight: 600; margin: 0;">Trạng thái:</label>
-            <select name="status" class="filter-select" onchange="this.form.submit()" style="font-weight: 600;">
-                <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Mới tiếp nhận</option>
-                <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>Đang xử lý</option>
-                <option value="resolved" {% if ticket.status == 'resolved' %}selected{% endif %}>Đã giải quyết</option>
-                <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>Đã đóng</option>
-            </select>
-        </form>
-
-        <!-- Assign Agent Form -->
-        <form method="POST" action="/tickets/{{ ticket.id }}/assign" style="display: flex; align-items: center; gap: 8px;">
-            <label style="font-size: 13px; font-weight: 600; margin: 0;">Phân công:</label>
-            <select name="agent_id" class="filter-select" onchange="this.form.submit()">
-                <option value="">-- Chưa gán --</option>
-                {% for a in agents %}
-                <option value="{{ a.id }}" {% if ticket.assigned_agent_id == a.id %}selected{% endif %}>
-                    {{ a.full_name }}
-                </option>
-                {% endfor %}
-            </select>
-        </form>
-    </div>
-</div>
-
-<div class="ticket-layout">
-    <!-- Left: Conversation Stream & Smart Reply -->
-    <div>
-        <!-- Smart AI Assistant Box -->
-        <div class="smart-ai-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <strong style="color: var(--primary); display: flex; align-items: center; gap: 6px;">
-                    Trợ Lý CSKH AI (Smart Suggestions)
-                </strong>
-                <small style="color: var(--text-muted);">Dựa trên RAG Knowledge Base</small>
-            </div>
-            <p style="font-size: 13px; margin: 0 0 10px 0; color: #374151;">
-                Bấm vào câu trả lời gợi ý bên dưới để đưa nhanh vào khung soạn thảo:
-            </p>
-            <div id="smart-replies-list">
-                {% if smart_replies %}
-                    {% for reply in smart_replies %}
-                    <span class="smart-reply-chip" data-reply="{{ reply }}" onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
-                        {{ reply }}
-                    </span>
-                    {% endfor %}
-                {% else %}
-                    <span class="smart-reply-chip" data-reply="Dạ em chào anh/chị, em đã tiếp nhận yêu cầu và đang kiểm tra thông tin ngay ạ!" onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
-                        Em đã tiếp nhận và đang xử lý
-                    </span>
-                    <span class="smart-reply-chip" data-reply="Dạ trường hợp này anh/chị vui lòng mang máy qua chi nhánh gần nhất để kỹ thuật viên kiểm tra trực tiếp ạ." onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
-                        Hướng dẫn mang máy qua chi nhánh
-                    </span>
-                    <span class="smart-reply-chip" data-reply="Dạ anh/chị vui lòng cung cấp số điện thoại hoặc mã đơn hàng để em tra cứu ạ." onclick="insertReply(this.getAttribute('data-reply') || this.innerText.trim())">
-                        Yêu cầu mã đơn hàng / SĐT
-                    </span>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Chat Feed Box -->
-        <div class="feed-container">
-            <div class="feed-header">
-                <div>
-                    <strong>Lịch Sử Trao Đổi</strong>
-                    <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">({{ messages|length }} tin nhắn)</span>
-                </div>
-                <div style="font-size: 12px; color: var(--text-muted);">
-                    Kênh phản hồi: <strong style="text-transform: uppercase;">{{ ticket.channel }}</strong>
-                </div>
-            </div>
-
-            <div class="feed-messages" id="ticket-feed-messages">
-                {% for msg in messages %}
-                <div class="feed-msg msg-{{ msg.sender_type }}">
-                    <div class="msg-meta">
-                        <strong>{{ msg.sender_name }}</strong>
-                        <span>{{ msg.created_at.strftime("%H:%M %d/%m") if msg.created_at else '' }}</span>
-                    </div>
-                    <div style="white-space: pre-wrap;">{{ msg.message }}</div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- Reply Box -->
-            <div style="padding: 16px; border-top: 1px solid var(--border-color); background: white;">
-                <form method="POST" action="/tickets/{{ ticket.id }}/message">
-                    <div style="display: flex; gap: 10px;">
-                        <textarea id="reply-text" name="message" rows="3" class="form-control" placeholder="Nhập câu trả lời gửi tới khách hàng qua kênh {{ ticket.channel }}..." required></textarea>
-                        <div style="display: flex; flex-direction: column; justify-content: flex-end; gap: 6px;">
-                            <button type="submit" class="btn btn-primary" style="height: 100%;">
-                                Gửi
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right: Customer 360 & Context Panel -->
-    <div>
-        <!-- Customer 360 Card -->
-        <div class="card">
-            <div class="card-title">
-                <span>Customer 360</span>
-                {% if customer %}
-                <a href="/customers/{{ customer.id }}" style="font-size: 12px; color: var(--primary); text-decoration: none;">Xem chi tiết</a>
-                {% endif %}
-            </div>
-
-            {% if customer %}
-            <div class="c360-header">
-                <div class="c360-avatar">
-                    {{ customer.full_name[:1] }}
-                </div>
-                <div>
-                    <h3 style="margin: 0; font-size: 16px;">{{ customer.full_name }}</h3>
-                    <span class="badge" style="background: #fef3c7; color: #92400e; margin-top: 4px;">
-                        {{ customer.member_rank or 'Thành viên' }}
-                    </span>
-                </div>
-            </div>
-
-            <ul class="c360-info-list">
-                <li class="c360-info-item">
-                    <span class="label">Số điện thoại:</span>
-                    <span class="val">
-                        {{ customer.phone or ticket.customer_phone or 'Chưa có' }}
-                        {% if customer.phone or ticket.customer_phone %}
-                        <button class="btn btn-sm btn-softphone" style="padding: 2px 6px; font-size: 11px; margin-left: 6px;"
-                                onclick="startSoftphoneCall('{{ customer.phone or ticket.customer_phone }}')">
-                            Gọi
-                        </button>
-                        {% endif %}
-                    </span>
-                </li>
-                <li class="c360-info-item">
-                    <span class="label">Email:</span>
-                    <span class="val">{{ customer.email or ticket.customer_email or 'Chưa có' }}</span>
-                </li>
-                <li class="c360-info-item">
-                    <span class="label">Zalo ID:</span>
-                    <span class="val">{{ customer.zalo_id or 'Chưa liên kết' }}</span>
-                </li>
-                <li class="c360-info-item">
-                    <span class="label">Facebook:</span>
-                    <span class="val">{{ customer.fb_id or 'Chưa liên kết' }}</span>
-                </li>
-                <li class="c360-info-item">
-                    <span class="label">Ghi chú KH:</span>
-                    <span class="val" style="font-style: italic; color: #4b5563;">{{ customer.notes or 'Chưa có ghi chú' }}</span>
-                </li>
-            </ul>
-            {% else %}
-            <p style="color: var(--text-muted); font-size: 13px;">Chưa liên kết hồ sơ khách hàng.</p>
-            {% endif %}
-
-            <!-- Related Orders from KiotViet / Sapo / Lazada -->
-            <div style="margin-top: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <strong style="font-size: 13px;">Đơn hàng liên quan ({{ orders|length }})</strong>
-                    {% if ticket.customer_phone %}
-                    <form method="POST" action="/api/customers/lookup-orders" style="margin: 0;">
-                        <input type="hidden" name="phone" value="{{ ticket.customer_phone }}">
-                        <button type="submit" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 2px 6px;">Tra cứu lại</button>
-                    </form>
-                    {% endif %}
-                </div>
-
-                {% if orders %}
-                    {% for ord in orders[:3] %}
-                    <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 8px; font-size: 12px;">
-                        <div style="display: flex; justify-content: space-between; font-weight: 600;">
-                            <span>{{ ord.order_code }}</span>
-                            <span class="badge" style="font-size: 10px; background: #e0e7ff; color: #3730a3; text-transform: uppercase;">{{ ord.source }}</span>
-                        </div>
-                        <div style="color: var(--text-muted); margin: 3px 0;">{{ ord.items_summary }}</div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                            <span style="color: var(--success); font-weight: 600;">{{ "{:,.0f}".format(ord.total_amount) }} ₫</span>
-                            <span style="color: #4b5563;">{{ ord.shipping_status or 'Đang giao' }}</span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <p style="font-size: 12px; color: var(--text-muted);">Không tìm thấy đơn hàng nào với SĐT này.</p>
-                {% endif %}
-            </div>
-
-            <!-- Survey Review if already submitted -->
-            {% if survey %}
-            <div style="margin-top: 20px; padding: 12px; background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius-sm);">
-                <div style="font-weight: 700; color: #854d0e; font-size: 13px; margin-bottom: 4px;">
-                    Đánh giá của khách hàng:
-                </div>
-                <div style="font-size: 13px;">CSAT: <strong>{{ survey.rating_csat }}/5 sao</strong> | NPS: <strong>{{ survey.score_nps }}/10</strong></div>
-                {% if survey.feedback %}
-                <div style="font-style: italic; color: #4b5563; font-size: 12px; margin-top: 4px;">"{{ survey.feedback }}"</div>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<style>
+    :root { --td-blue:#2563eb; --td-ink:#172033; --td-muted:#718096; --td-line:#e7edf5; --td-bg:#f5f8fc; }
+    .td-page { background:var(--td-bg); color:var(--td-ink); margin:-20px -24px; padding:24px; min-height:calc(100vh - 64px); font-family:Inter,"Plus Jakarta Sans",system-ui,sans-serif; }
+    .td-page * { box-sizing:border-box; }
+    .td-top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0 auto 22px; max-width:1600px; }
+    .td-brand { display:flex; align-items:center; gap:11px; color:var(--td-ink); text-decoration:none; font-weight:800; font-size:17px; }
+    .td-brand-mark { width:38px; height:38px; display:grid; place-items:center; border-radius:12px; color:white; background:linear-gradient(145deg,#3b82f6,#1d4ed8); box-shadow:0 6px 14px #2563eb38; }
+    .td-search { position:relative; width:min(390px,40vw); }
+    .td-search i { position:absolute; left:14px; top:13px; color:#94a3b8; }
+    .td-search input { width:100%; border:1px solid var(--td-line); border-radius:11px; padding:10px 14px 10px 40px; background:#fff; outline:none; }
+    .td-search input:focus { border-color:#93b4ff; box-shadow:0 0 0 3px #2563eb14; }
+    .td-top-actions { display:flex; align-items:center; gap:16px; }
+    .td-icon-btn { position:relative; display:grid; place-items:center; border:0; background:transparent; color:#526078; font-size:17px; width:38px; height:38px; }
+    .td-dot { width:7px;height:7px;background:#ef4444;border:1px solid white;border-radius:50%;position:absolute;top:7px;right:7px; }
+    .td-user { display:flex; align-items:center; gap:9px; font-size:13px; font-weight:700; }
+    .td-avatar { width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#dbeafe;color:#1d4ed8;font-weight:800;flex:none; }
+    .td-shell { display:grid; grid-template-columns:205px minmax(0,1fr); gap:22px; max-width:1600px; margin:auto; }
+    .td-sidebar,.td-card { background:#fff; border:1px solid var(--td-line); border-radius:15px; box-shadow:0 2px 8px #1e293b06; }
+    .td-sidebar { padding:14px 10px; align-self:start; position:sticky; top:15px; }
+    .td-nav-label { color:#9aa6b8; font-size:10px; font-weight:800; letter-spacing:.1em; padding:12px 11px 7px; text-transform:uppercase; }
+    .td-nav { display:flex; align-items:center; gap:11px; color:#58667c; padding:10px 11px; margin:2px 0; border-radius:9px; text-decoration:none; font-size:13px; font-weight:600; }
+    .td-nav i { width:17px;text-align:center;font-size:14px; }
+    .td-nav:hover { color:var(--td-blue); background:#f4f7ff; }
+    .td-nav.active { color:#1d4ed8; background:#eaf1ff; }
+    .td-main { min-width:0; }
+    .td-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:16px; }
+    .td-crumb { color:#8491a5; font-size:12px; margin-bottom:7px; }
+    .td-crumb a { color:#64748b; text-decoration:none; }
+    .td-title { font-weight:800; font-size:23px; margin:0; letter-spacing:-.03em; }
+    .td-subtitle { color:var(--td-muted); font-size:12px; margin-top:5px; }
+    .td-actions { display:flex; align-items:center; gap:8px; }
+    .td-actions .form-select { width:auto; min-width:140px; border-color:var(--td-line); border-radius:9px; font-size:12px; padding-top:9px; padding-bottom:9px; }
+    .td-btn { border:0; border-radius:9px; font-size:12px; font-weight:700; padding:10px 13px; }
+    .td-btn-primary { background:var(--td-blue); color:white; }
+    .td-btn-light { background:white; border:1px solid var(--td-line); color:#526078; }
+    .td-card { padding:17px; margin-bottom:16px; min-width:0; }
+    .td-card-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; }
+    .td-card-title { font-size:14px; font-weight:800; margin:0; display:flex;align-items:center;gap:8px; }
+    .td-card-title i { color:var(--td-blue); }
+    .td-kicker { font-size:11px; color:#8b97a9; }
+    .td-info-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; }
+    .td-info { background:#f8faff; border:1px solid #edf2fa; border-radius:10px; padding:11px 12px; min-width:0; }
+    .td-info label { color:#8692a5; display:block; font-size:10px; font-weight:700; margin-bottom:5px; }
+    .td-info strong { font-size:12px; line-height:1.4; display:block; overflow-wrap:anywhere; }
+    .td-pill { display:inline-flex; align-items:center; gap:5px; border-radius:99px; padding:4px 8px; background:#eaf1ff; color:#2458c6; font-size:10px; font-weight:800; white-space:nowrap; }
+    .td-pill.green { background:#e8f8ef;color:#16834b; }.td-pill.orange { background:#fff3df;color:#b96908; }.td-pill.red { background:#ffeded;color:#c33c3c; }
+    .td-columns { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,.85fr); gap:16px; align-items:start; }
+    .td-chat { display:flex; flex-direction:column; height:525px; }
+    .td-chat-head { padding-bottom:12px; border-bottom:1px solid var(--td-line); display:flex; justify-content:space-between; align-items:center; }
+    .td-chat-feed { flex:1; overflow-y:auto; padding:16px 4px; display:flex; flex-direction:column; gap:15px; }
+    .td-message { display:flex; gap:9px; max-width:84%; align-items:flex-end; }
+    .td-message.agent { margin-left:auto; flex-direction:row-reverse; }
+    .td-msg-avatar { width:29px;height:29px;border-radius:50%;display:grid;place-items:center;background:#eff4fb;color:#65758d;font-size:10px;font-weight:800;flex:none; }
+    .td-message.agent .td-msg-avatar { background:#dceaff;color:#2563eb; }
+    .td-bubble { background:#f2f5fa; border-radius:12px 12px 12px 3px; padding:10px 12px; font-size:12px; line-height:1.55; color:#344155; white-space:pre-wrap; }
+    .td-message.agent .td-bubble { background:#2563eb;color:white;border-radius:12px 12px 3px 12px; }
+    .td-msg-meta { display:flex; gap:8px; color:#98a3b3; font-size:9px; margin:0 3px 5px; }
+    .td-message.agent .td-msg-meta { justify-content:flex-end; }
+    .td-chat-compose { border-top:1px solid var(--td-line); padding-top:12px; }
+    .td-compose-box { border:1px solid var(--td-line); border-radius:11px; padding:9px; }
+    .td-compose-box textarea { border:0; resize:vertical; min-height:55px; width:100%; outline:none; font-size:12px; }
+    .td-compose-actions { display:flex; justify-content:space-between; align-items:center; }
+    .td-compose-tools { display:flex; gap:5px; }
+    .td-compose-tools button { border:0;background:transparent;color:#7e8ba0;width:30px;height:30px; }
+    .td-send { border:0; border-radius:8px; color:white; background:#2563eb; padding:8px 13px; font-size:11px; font-weight:700; }
+    .td-ai { border-color:#dce8ff; background:linear-gradient(155deg,#fff 52%,#f5f8ff); }
+    .td-ai-label { font-size:10px; color:#2563eb; font-weight:800; letter-spacing:.08em; }
+    .td-sentiment { display:flex; justify-content:space-between; align-items:center; background:#fff9ec; border:1px solid #ffedc8; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; }
+    .td-ai-block { margin:12px 0; }
+    .td-ai-block label { color:#8793a6; display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
+    .td-ai-block p { color:#445168; font-size:11px; margin:0; line-height:1.55; }
+    .td-suggestion { border:1px solid #dce8ff; border-radius:9px; background:white; padding:10px; font-size:11px; line-height:1.55; color:#445168; }
+    .td-tags { display:flex; gap:6px; flex-wrap:wrap; }
+    .td-tags span { background:#eff5ff;color:#4168ac;border-radius:99px;padding:5px 8px;font-size:10px;font-weight:700; }
+    .td-ai-buttons { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:13px; }
+    .td-ai-buttons button { border:1px solid #dce8ff; color:#285ec7; background:white; border-radius:8px; padding:9px 7px; font-size:10px; font-weight:800; }
+    .td-ai-buttons button:first-child { grid-column:1/-1;background:#2563eb;color:white;border-color:#2563eb; }
+    .td-profile { display:flex;align-items:center;gap:10px;margin-bottom:13px; }
+    .td-profile .td-avatar { width:42px;height:42px; }
+    .td-profile-name { font-size:13px;font-weight:800; }
+    .td-profile-type { font-size:10px;color:#8a96a8;margin-top:3px; }
+    .td-detail-list { display:grid;grid-template-columns:1fr 1fr;gap:11px 8px;margin:0; }
+    .td-detail-list dt { color:#8a96a8;font-size:10px;font-weight:600; }
+    .td-detail-list dd { margin:3px 0 0;font-size:11px;font-weight:700;overflow-wrap:anywhere; }
+    .td-divider { border:0;border-top:1px solid var(--td-line);margin:14px 0; }
+    .td-mini-heading { font-size:11px;font-weight:800;margin:0 0 9px; }
+    .td-order { display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #f0f3f7;font-size:10px; }
+    .td-order:first-of-type { border-top:0; }
+    .td-order strong { display:block;font-size:10px; }
+    .td-order small { display:block;color:#8b97a9;margin-top:3px; }
+    .td-table { margin:0; min-width:570px; font-size:10px; }
+    .td-table th { color:#8995a6; font-weight:700; text-transform:uppercase; letter-spacing:.04em; font-size:9px; border-bottom-color:#edf1f6; }
+    .td-table td { color:#475569; vertical-align:middle; border-bottom-color:#f0f3f7; padding-top:10px;padding-bottom:10px; }
+    .td-rating { font-size:20px;font-weight:800;color:#1d4ed8; }
+    .td-score-row { display:flex;gap:25px;align-items:center; }
+    .td-score small { display:block;font-size:9px;color:#8995a6;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px; }
+    .td-feedback { border-left:3px solid #93b4ff;padding:7px 0 7px 10px;margin-top:10px;font-size:10px;color:#536177;line-height:1.5; }
+    @media(max-width:1200px) { .td-info-grid{grid-template-columns:repeat(3,minmax(0,1fr));}.td-columns{grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);} }
+    @media(max-width:900px) { .td-shell{grid-template-columns:1fr}.td-sidebar{position:static;display:flex;overflow:auto;gap:4px;padding:8px}.td-nav-label{display:none}.td-nav{white-space:nowrap;margin:0}.td-columns{grid-template-columns:1fr 1fr}.td-conversation{grid-column:1/-1;grid-row:1}.td-ai-card{grid-column:1/-1}.td-sidebar .td-nav:nth-of-type(n+7){display:none} }
+    @media(max-width:600px) { .td-page{margin:-14px -12px;padding:14px 12px}.td-top{margin-bottom:15px}.td-brand{font-size:0}.td-brand-mark{font-size:15px}.td-search{width:52vw}.td-top-actions{gap:4px}.td-user span{display:none}.td-shell{gap:12px}.td-heading{display:block}.td-title{font-size:19px}.td-actions{margin-top:12px;flex-wrap:wrap}.td-actions .form-select{flex:1}.td-info-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.td-card{padding:13px;margin-bottom:12px}.td-columns{grid-template-columns:1fr}.td-conversation,.td-ai-card{grid-column:auto}.td-chat{height:485px}.td-message{max-width:94%}.td-ai-buttons{grid-template-columns:1fr 1fr}.td-detail-list{grid-template-columns:1fr 1fr} }
+</style>
 {% endblock %}
 
-{% block extra_scripts %}
+{% block content %}
+{% set demo_customer = {'full_name':'Nguyễn Minh Anh','phone':'0903 456 789','email':'minhanh.nguyen@email.com','address':'Quận 3, TP. Hồ Chí Minh','member_rank':'Khách hàng thân thiết'} %}
+{% set demo_orders = [
+    {'order_code':'ORD-2025-0842','items_summary':'iPhone 15 Pro · 256GB','purchase_date':'12/08/2025','total_amount':28990000,'warranty_status':'Còn bảo hành'},
+    {'order_code':'ORD-2024-0318','items_summary':'AirPods Pro (2nd gen)','purchase_date':'04/03/2024','total_amount':5990000,'warranty_status':'Hết hạn'}
+] %}
+{% set shown_customer = customer if customer is not none and customer is not sameas false else demo_customer %}
+{% set shown_orders = orders if orders is not none and orders is not sameas false else demo_orders %}
+{% set sample_messages = [
+    {'sender_type':'customer','sender_name':'Nguyễn Minh Anh','message':'Chào shop, iPhone 15 Pro của mình gần đây bị nóng máy và pin tụt nhanh dù chỉ dùng các ứng dụng cơ bản. Máy vẫn còn bảo hành, shop hỗ trợ kiểm tra giúp mình với ạ.','created_at':none},
+    {'sender_type':'agent','sender_name':'Trần Hoàng','message':'Em chào chị Minh Anh, em đã tiếp nhận thông tin. Chị cho em xin thêm phiên bản iOS đang sử dụng và thời điểm máy bắt đầu nóng bất thường nhé.','created_at':none},
+    {'sender_type':'customer','sender_name':'Nguyễn Minh Anh','message':'Máy đang ở iOS 18.2, khoảng 2 ngày nay thì bị ạ. Sạc cũng nóng hơn bình thường.','created_at':none}
+] %}
+{% set shown_messages = messages or sample_messages %}
+<div class="td-page">
+    <header class="td-top">
+        <a href="/dashboard" class="td-brand"><span class="td-brand-mark"><i class="fa-solid fa-mobile-screen-button"></i></span> CSKH Mobile</a>
+        <label class="td-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Tìm khách hàng, ticket, thiết bị..." aria-label="Tìm kiếm"></label>
+        <div class="td-top-actions"><button class="td-icon-btn" aria-label="Thông báo"><i class="fa-regular fa-bell"></i><span class="td-dot"></span></button><div class="td-user"><div class="td-avatar">TH</div><span>{{ session.get('full_name', 'Trần Hoàng') }}<small class="d-block text-secondary fw-normal">Nhân viên hỗ trợ</small></span></div></div>
+    </header>
+    <div class="td-shell">
+        <aside class="td-sidebar" aria-label="Điều hướng chính">
+            <div class="td-nav-label">Không gian làm việc</div>
+            <a class="td-nav" href="/dashboard"><i class="fa-solid fa-chart-pie"></i>Dashboard</a>
+            <a class="td-nav" href="/customers"><i class="fa-solid fa-users"></i>Khách hàng</a>
+            <a class="td-nav" href="/warranties"><i class="fa-solid fa-mobile-screen"></i>Thiết bị</a>
+            <a class="td-nav active" href="/tickets"><i class="fa-solid fa-ticket"></i>Support Tickets</a>
+            <a class="td-nav" href="/kanban"><i class="fa-solid fa-table-columns"></i>Ticket Kanban</a>
+            <a class="td-nav" href="/faqs"><i class="fa-solid fa-book-open"></i>Knowledge Base</a>
+            <a class="td-nav" href="/reports"><i class="fa-solid fa-chart-column"></i>Báo cáo</a>
+            <div class="td-nav-label">Tiện ích</div>
+            <a class="td-nav" href="/agent"><i class="fa-solid fa-wand-magic-sparkles"></i>AI Assistant</a>
+            <a class="td-nav" href="/users"><i class="fa-solid fa-gear"></i>Cài đặt</a>
+        </aside>
+
+        <main class="td-main">
+            <div class="td-heading">
+                <div><div class="td-crumb"><a href="/tickets">Support Tickets</a> <i class="fa-solid fa-chevron-right mx-1" style="font-size:8px"></i> Chi tiết</div><h1 class="td-title">{{ ticket.ticket_code or 'TK-2025-0842' }} <span class="text-secondary fw-normal">·</span> {{ ticket.subject or 'Máy nóng và pin tụt nhanh' }}</h1><div class="td-subtitle">Tạo ngày {{ ticket.created_at.strftime('%d/%m/%Y, %H:%M') if ticket.created_at and ticket.created_at.strftime is defined else '18/10/2025, 09:42' }} · Kênh {{ ticket.channel or 'Zalo' }}</div></div>
+                <div class="td-actions">
+                    <form method="POST" action="/tickets/{{ ticket.id }}/status">
+                        <select class="form-select" name="status" aria-label="Trạng thái" onchange="this.form.submit()">
+                            <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>1. Tiếp nhận</option>
+                            <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>2. Đang xử lý</option>
+                            <option value="pending_customer" {% if ticket.status in ['pending_customer', 'pending'] %}selected{% endif %}>3. Chờ khách phản hồi</option>
+                            <option value="waiting_vendor" {% if ticket.status == 'waiting_vendor' %}selected{% endif %}>4. Chờ hãng bảo hành</option>
+                            <option value="resolved" {% if ticket.status == 'resolved' %}selected{% endif %}>5. Hoàn thành</option>
+                            <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>6. Đóng Ticket</option>
+                        </select>
+                    </form>
+                    <form method="POST" action="/tickets/{{ ticket.id }}/assign"><select class="form-select" name="agent_id" aria-label="Nhân viên phụ trách" onchange="this.form.submit()"><option value="">Phân công</option>{% for a in agents or [] %}<option value="{{ a.id }}" {% if ticket.assigned_agent_id == a.id %}selected{% endif %}>{{ a.full_name }}</option>{% endfor %}</select></form>
+                    <button class="td-btn td-btn-light" type="button" onclick="window.print()"><i class="fa-solid fa-ellipsis"></i></button>
+                </div>
+            </div>
+
+            <!-- 6-STAGE WORKFLOW STEPPER & AI NEXT ACTION -->
+            <section class="td-card" style="background: white; margin-bottom: 16px; padding: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-weight: 800; font-size: 13px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-route me-1" style="color: #2563eb;"></i> Quy Trình Xử Lý 6 Giai Đoạn (Ticket Workflow)
+                    </span>
+                    <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 700; font-size: 11px;">
+                        Hiện tại: {{ ticket.status|replace('_', ' ')|capitalize }}
+                    </span>
+                </div>
+
+                <!-- Stepper Steps -->
+                <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 14px;">
+                    {% set flow_steps = [
+                        ('open', '1. Tiếp nhận'),
+                        ('in_progress', '2. Đang xử lý'),
+                        ('pending_customer', '3. Chờ khách'),
+                        ('waiting_vendor', '4. Chờ hãng'),
+                        ('resolved', '5. Hoàn thành'),
+                        ('closed', '6. Đóng Ticket')
+                    ] %}
+                    {% for step_k, step_title in flow_steps %}
+                    <div style="background: {% if ticket.status == step_k or (step_k == 'pending_customer' and ticket.status == 'pending') %}#2563eb{% elif (ticket.status == 'resolved' and step_k != 'closed') or (ticket.status == 'closed') %}#dcfce7{% else %}#f8fafc{% endif %}; border: 1px solid {% if ticket.status == step_k or (step_k == 'pending_customer' and ticket.status == 'pending') %}#2563eb{% else %}#e2e8f0{% endif %}; border-radius: 8px; padding: 8px 6px; text-align: center; color: {% if ticket.status == step_k or (step_k == 'pending_customer' and ticket.status == 'pending') %}white{% elif (ticket.status == 'resolved' and step_k != 'closed') or (ticket.status == 'closed') %}#15803d{% else %}#64748b{% endif %}; font-weight: 700; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ step_title }}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- AI Next Best Action Box -->
+                {% if ai_next_action %}
+                <div style="background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #2563eb; color: white; display: grid; place-items: center; font-size: 14px; flex: none;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">
+                                AI Tự Đề Xuất Bước Tiếp Theo (Độ tin cậy {{ ai_next_action.confidence }}%):
+                            </div>
+                            <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin: 2px 0;">
+                                Đề xuất: <strong style="color: #2563eb;">{{ ai_next_action.suggested_status_label }}</strong>
+                            </div>
+                            <div style="font-size: 11px; color: #475569; line-height: 1.4;">
+                                {{ ai_next_action.rationale }}
+                            </div>
+                        </div>
+                    </div>
+                    {% if ai_next_action.suggested_next_status != ticket.status %}
+                    <div>
+                        <form method="POST" action="/tickets/{{ ticket.id }}/status" style="margin: 0;">
+                            <input type="hidden" name="status" value="{{ ai_next_action.suggested_next_status }}">
+                            <button type="submit" class="btn btn-sm btn-primary" style="font-weight: 700; font-size: 11px; padding: 7px 12px; white-space: nowrap;">
+                                Áp Dụng Bước Này
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="td-card" aria-labelledby="ticket-info-heading">
+                <div class="td-card-head"><h2 id="ticket-info-heading" class="td-card-title"><i class="fa-solid fa-circle-info"></i>Thông tin ticket</h2><span class="td-kicker">Cập nhật lần cuối: 5 phút trước</span></div>
+                <div class="td-info-grid">
+                    <div class="td-info"><label>Mã ticket</label><strong>{{ ticket.ticket_code or 'TK-2025-0842' }}</strong></div>
+                    <div class="td-info"><label>Khách hàng</label><strong>{{ shown_customer.full_name }}</strong></div>
+                    <div class="td-info"><label>Số điện thoại</label><strong>{{ ticket.customer_phone or shown_customer.phone }}</strong></div>
+                    <div class="td-info"><label>Thiết bị</label><strong>{{ ticket.device_name or (primary_device.product_name if primary_device else 'Thiết bị di động') }}</strong></div>
+                    <div class="td-info"><label>IMEI</label><strong>{{ ticket.imei or (primary_device.imei_serial if primary_device else 'Chưa liên kết') }}</strong></div>
+                    <div class="td-info"><label>Ngày mua</label><strong>{{ ticket.purchase_date or (primary_device.start_date.strftime('%d/%m/%Y') if primary_device and primary_device.start_date and primary_device.start_date.strftime is defined else 'Theo hóa đơn') }}</strong></div>
+                    <div class="td-info"><label>Bảo hành</label><strong><span class="td-pill green"><i class="fa-solid fa-shield-check"></i> {{ primary_device.warranty_package if primary_device else 'Bảo hành chính hãng' }}</span></strong></div>
+                    <div class="td-info"><label>Danh mục</label><strong>{{ ticket.category or 'Kỹ thuật' }}</strong></div>
+                    <div class="td-info"><label>Mức ưu tiên</label><strong><span class="td-pill orange"><i class="fa-solid fa-flag"></i> {{ ticket.priority|capitalize if ticket.priority else 'Trung bình' }}</span></strong></div>
+                    <div class="td-info"><label>Trạng thái</label><strong><span class="td-pill {% if ticket.status == 'resolved' or ticket.status == 'closed' %}green{% elif ticket.status == 'open' %}orange{% endif %}">{{ ticket.status|replace('_',' ')|capitalize if ticket.status else 'Đang xử lý' }}</span></strong></div>
+                    <div class="td-info"><label>Ngày tạo</label><strong>{{ ticket.created_at.strftime('%d/%m/%Y') if ticket.created_at and ticket.created_at.strftime is defined else 'Hôm nay' }}</strong></div>
+                    <div class="td-info"><label>Nhân viên phụ trách</label><strong>{{ ticket.assigned_agent_name or 'Chưa phân công' }}</strong></div>
+                </div>
+            </section>
+
+            <div class="td-columns">
+                <section class="td-card td-chat td-conversation" aria-labelledby="conversation-heading">
+                    <div class="td-chat-head"><div><h2 id="conversation-heading" class="td-card-title"><i class="fa-regular fa-comments"></i>Cuộc hội thoại <span class="td-kicker">({{ shown_messages|length }} tin nhắn)</span></h2></div><span class="td-pill"><i class="fa-solid fa-comment-dots"></i>{{ ticket.channel or 'Zalo' }}</span></div>
+                    <div class="td-chat-feed" id="ticket-feed-messages" aria-live="polite">
+                        {% for msg in shown_messages %}
+                        <div class="td-message {% if msg.sender_type == 'agent' %}agent{% endif %}"><div class="td-msg-avatar">{{ msg.sender_name[:1] if msg.sender_name else 'K' }}</div><div><div class="td-msg-meta"><strong>{{ msg.sender_name or 'Khách hàng' }}</strong><span>{{ msg.created_at.strftime('%H:%M · %d/%m') if msg.created_at and msg.created_at.strftime is defined else 'Gần đây' }}</span></div><div class="td-bubble">{{ msg.message }}</div></div></div>
+                        {% endfor %}
+                    </div>
+                    <div class="td-chat-compose">
+                        <form method="POST" action="/tickets/{{ ticket.id }}/message" id="reply-form">
+                            <div class="td-compose-box"><textarea id="reply-text" name="message" placeholder="Nhập nội dung phản hồi cho khách hàng..." required></textarea><div class="td-compose-actions"><div class="td-compose-tools"><button type="button" aria-label="Đính kèm tệp" onclick="document.getElementById('attachment-input').click()"><i class="fa-solid fa-paperclip"></i></button><input type="file" id="attachment-input" hidden><button type="button" aria-label="Biểu tượng cảm xúc"><i class="fa-regular fa-face-smile"></i></button></div><button type="submit" class="td-send">Gửi phản hồi <i class="fa-solid fa-paper-plane ms-1"></i></button></div></div>
+                        </form>
+                    </div>
+                </section>
+
+                <section class="td-card td-ai td-ai-card" aria-labelledby="ai-heading">
+                    <div class="td-card-head"><h2 id="ai-heading" class="td-card-title"><i class="fa-solid fa-wand-magic-sparkles"></i>AI Support Assistant & Risk Scoring</h2><span class="td-ai-label"><i class="fa-solid fa-circle" style="font-size:6px"></i> AI READY</span></div>
+
+                    <!-- CHẤM ĐIỂM AI: SENTIMENT, URGENCY, RỦI RO KHIẾU NẠI 85% -->
+                    {% if ai_risk_score %}
+                    <div style="background: #fff; border: 1px solid #fee2e2; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b;">Sentiment Khách Hàng:</span>
+                            <span class="badge" style="background: {% if ai_risk_score.sentiment in ['angry', 'negative'] %}#fee2e2; color: #b91c1c;{% else %}#dcfce7; color: #15803d;{% endif %} font-weight: 700;">
+                                {{ ai_risk_score.sentiment_label }}
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b;">Mức Độ Khẩn Cấp:</span>
+                            <span class="badge" style="background: {% if ai_risk_score.urgency in ['urgent', 'high'] %}#fef3c7; color: #b45309;{% else %}#f1f5f9; color: #475569;{% endif %} font-weight: 700;">
+                                {{ ai_risk_score.urgency_label }}
+                            </span>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                                <span style="font-weight: 700; color: #b91c1c;">Rủi ro khiếu nại (Churn Risk):</span>
+                                <strong style="color: #b91c1c; font-size: 12px;">{{ ai_risk_score.churn_risk }}%</strong>
+                            </div>
+                            <div style="height: 8px; width: 100%; background: #fee2e2; border-radius: 99px; overflow: hidden;">
+                                <div style="height: 100%; width: {{ ai_risk_score.churn_risk }}%; background: {% if ai_risk_score.churn_risk >= 70 %}#ef4444{% elif ai_risk_score.churn_risk >= 40 %}#f59e0b{% else %}#10b981{% endif %}; border-radius: 99px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Khuyến nghị hành động -->
+                        {% if ai_risk_score.recommendations %}
+                        <div style="margin-top: 10px; border-top: 1px dashed #fecaca; padding-top: 8px;">
+                            <div style="font-size: 10px; font-weight: 800; color: #991b1b; text-transform: uppercase; margin-bottom: 4px;">
+                                Khuyến nghị hành động:
+                            </div>
+                            <ul style="margin: 0; padding-left: 16px; font-size: 11px; color: #475569; line-height: 1.4;">
+                                {% for rec in ai_risk_score.recommendations %}
+                                <li>{{ rec }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <!-- Tặng voucher giữ chân -->
+                        {% if ai_risk_score.voucher_suggestion %}
+                        <div style="margin-top: 10px; background: #f0fdf4; border: 1px dashed #86efac; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 11px; font-weight: 800; color: #166534;">Gợi ý tặng voucher:</div>
+                                <div style="font-size: 11px; color: #15803d; font-family: monospace; font-weight: 700;">{{ ai_risk_score.voucher_suggestion.code }}</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary" style="font-size: 10px; padding: 4px 8px;" onclick="applyVoucherFromDetail('{{ ticket.customer_id }}', '{{ ai_risk_score.voucher_suggestion.code }}', '{{ ai_risk_score.voucher_suggestion.name }}', {{ ai_risk_score.voucher_suggestion.discount_value }}, '{{ ticket.id }}')">
+                                Cấp Voucher Ngay
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="td-ai-block"><label>Tóm tắt vấn đề</label><p>{{ ticket.subject }}. {{ primary_device.product_name if primary_device else 'Thiết bị di động' }}</p></div>
+                    <div class="td-ai-block"><label>Phản hồi gợi ý</label><div class="td-suggestion" id="suggested-reply">{{ smart_replies[0] if smart_replies else 'Dạ em chào anh/chị, em đang kiểm tra hỗ trợ cho mình ngay đây ạ!' }}</div></div>
+                    <div class="td-ai-block"><label>Giải pháp liên quan</label><div class="td-tags"><span>Kiểm tra phần cứng</span><span>Chẩn đoán tình trạng máy</span></div></div>
+                    <div class="td-ai-block"><label>Khuyến nghị bảo hành</label><p><i class="fa-solid fa-shield-halved me-1" style="color:#16a05d"></i> {{ primary_device.warranty_package if primary_device else 'Đủ điều kiện kiểm tra bảo hành kỹ thuật' }}</p></div>
+                    <div class="td-ai-buttons"><button type="button" id="generate-reply"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Chèn câu trả lời</button><button type="button" onclick="alert('Đã tạo lịch chăm sóc tiếp theo cho khách hàng.')"><i class="fa-regular fa-calendar-plus me-1"></i>Tạo follow-up</button><button type="button" onclick="alert('Ticket đã được đánh dấu cần ưu tiên chuyển cấp.')"><i class="fa-solid fa-arrow-up-right-dots me-1"></i>Chuyển cấp</button></div>
+                </section>
+
+                <section class="td-card" aria-labelledby="profile-heading">
+                    <div class="td-card-head"><h2 id="profile-heading" class="td-card-title"><i class="fa-solid fa-user"></i>Hồ sơ khách hàng</h2><a href="/customers" class="td-kicker text-decoration-none">Xem hồ sơ <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i></a></div>
+                    <div class="td-profile"><div class="td-avatar">{{ shown_customer.full_name[:1] }}</div><div><div class="td-profile-name">{{ shown_customer.full_name }}</div><div class="td-profile-type"><i class="fa-solid fa-star me-1" style="color:#e9a525"></i>{{ shown_customer.member_rank or 'Khách hàng thân thiết' }}</div></div></div>
+                    <dl class="td-detail-list"><div><dt>Số điện thoại</dt><dd>{{ shown_customer.phone or ticket.customer_phone }}</dd></div><div><dt>Email</dt><dd>{{ shown_customer.email or ticket.customer_email or 'Chưa cập nhật' }}</dd></div><div><dt>Địa chỉ</dt><dd>{{ shown_customer.address or 'Việt Nam' }}</dd></div><div><dt>Loại khách hàng</dt><dd>{{ shown_customer.member_rank or 'Thành viên' }}</dd></div></dl>
+                    <hr class="td-divider"><h3 class="td-mini-heading">Lịch sử hỗ trợ <span class="td-kicker">({{ past_tickets|length if past_tickets else 1 }} ticket)</span></h3>
+                    {% if past_tickets %}
+                        {% for pt in past_tickets %}
+                        <div class="td-order"><div><strong><a href="/tickets/{{ pt.id }}" style="color: #1e293b; text-decoration: none;">{{ pt.ticket_code }} · {{ pt.subject }}</a></strong><small>{{ pt.created_at.strftime('%d/%m/%Y') if pt.created_at and pt.created_at.strftime is defined else 'Gần đây' }} · {{ pt.status }}</small></div><span class="td-pill {% if pt.status in ['resolved', 'closed'] %}green{% else %}orange{% endif %}">{{ pt.status|capitalize }}</span></div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="td-order"><div><strong>{{ ticket.ticket_code }} · {{ ticket.subject }}</strong><small>Hôm nay · {{ ticket.status }}</small></div><span class="td-pill orange">{{ ticket.status|capitalize }}</span></div>
+                    {% endif %}
+                </section>
+
+                <section class="td-card" aria-labelledby="csat-heading">
+                    <div class="td-card-head"><h2 id="csat-heading" class="td-card-title"><i class="fa-solid fa-heart"></i>Mức độ hài lòng</h2><span class="td-kicker">Khảo sát gần nhất</span></div>
+                    <div class="td-score-row"><div class="td-score"><small>CSAT Score</small><div class="td-rating">{{ survey.rating_csat if survey and survey.rating_csat is defined else '4.8' }}<span style="font-size:11px;color:#8c98aa"> / 5</span></div></div><div class="td-score"><small>NPS Score</small><div class="td-rating">{{ survey.score_nps if survey and survey.score_nps is defined else '+80' }}</div></div><div style="color:#f5b544;letter-spacing:2px;font-size:14px">★★★★★</div></div>
+                    <div class="td-feedback">“{{ survey.feedback if survey and survey.feedback else 'Nhân viên hỗ trợ rất nhiệt tình, hướng dẫn rõ ràng và xử lý nhanh. Mình hài lòng với dịch vụ.' }}”<div class="text-secondary mt-1">— Khảo sát sau hỗ trợ · {{ survey.submitted_at.strftime('%d/%m/%Y') if survey and survey.submitted_at and survey.submitted_at.strftime is defined else '14/08/2025' }}</div></div>
+                </section>
+
+                <section class="td-card" style="grid-column:1/-1" aria-labelledby="orders-heading">
+                    <div class="td-card-head"><h2 id="orders-heading" class="td-card-title"><i class="fa-solid fa-bag-shopping"></i>Đơn hàng liên quan</h2><span class="td-kicker">{{ shown_orders|length }} đơn hàng</span></div>
+                    <div class="table-responsive"><table class="table td-table"><thead><tr><th>Mã đơn hàng</th><th>Sản phẩm</th><th>Ngày mua</th><th>Giá trị</th><th>Bảo hành</th></tr></thead><tbody>
+                        {% for order in shown_orders %}<tr><td><strong>{{ order.order_code or order.code or 'ORD-2025-0842' }}</strong></td><td>{{ order.items_summary or order.product_name or 'iPhone 15 Pro · 256GB' }}</td><td>{{ order.purchase_date or order.created_at or '12/08/2025' }}</td><td>{{ '{:,.0f}'.format(order.total_amount or order.amount) if order.total_amount or order.amount else '28,990,000' }} ₫</td><td><span class="td-pill {% if 'hết' in (order.warranty_status or '')|lower %}red{% else %}green{% endif %}">{{ order.warranty_status or 'Còn bảo hành đến 12/08/2026' }}</span></td></tr>{% endfor %}
+                    </tbody></table></div>
+                </section>
+            </div>
+        </main>
+    </div>
+</div>
 <script>
-    function insertReply(text) {
-        const textarea = document.getElementById("reply-text");
-        if (textarea) {
-            textarea.value = text;
-            textarea.focus();
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    (function(){
+        const feed=document.getElementById('ticket-feed-messages');
+        if(feed) feed.scrollTop=feed.scrollHeight;
+        const generate=document.getElementById('generate-reply');
+        if(generate) generate.addEventListener('click',function(){const reply=document.getElementById('suggested-reply');const input=document.getElementById('reply-text');if(reply&&input){input.value=reply.textContent.trim();input.focus();}});
+    })();
 
-            // Hiệu ứng phản hồi thị giác: viền xanh nổi bật và background sáng
-            textarea.style.transition = "border-color 0.2s, box-shadow 0.2s, background-color 0.2s";
-            textarea.style.borderColor = "#1a73e8";
-            textarea.style.boxShadow = "0 0 0 3px rgba(26, 115, 232, 0.2)";
-            textarea.style.backgroundColor = "#f8faff";
-            setTimeout(() => {
-                textarea.style.boxShadow = "";
-                textarea.style.backgroundColor = "";
-            }, 800);
-
-            // Tự động cuộn mượt tới khung soạn thảo
-            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    async function applyVoucherFromDetail(custId, code, name, value, ticketId) {
+        if (!custId || custId === 'None') {
+            alert('Ticket chưa liên kết khách hàng cụ thể.');
+            return;
         }
-    }
-
-    // Đảm bảo gắn sự kiện click cho các chip gợi ý ngay khi tải xong
-    document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll(".smart-reply-chip").forEach(function(chip) {
-            chip.addEventListener("click", function() {
-                const text = this.getAttribute("data-reply") || this.innerText.trim();
-                insertReply(text);
+        try {
+            const res = await fetch('/api/vouchers/grant', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    customer_id: custId,
+                    voucher_code: code,
+                    title: name,
+                    discount_value: value,
+                    reason: 'AI Retention cho Ticket #' + ticketId,
+                    ticket_id: ticketId,
+                    valid_days: 30
+                })
             });
-        });
-
-        // Tự động cuộn xuống cuối luồng chat
-        const feed = document.getElementById("ticket-feed-messages");
-        if (feed) feed.scrollTop = feed.scrollHeight;
-    });
-
-    if (document.readyState === "complete" || document.readyState === "interactive") {
-        document.querySelectorAll(".smart-reply-chip").forEach(function(chip) {
-            chip.addEventListener("click", function() {
-                const text = this.getAttribute("data-reply") || this.innerText.trim();
-                insertReply(text);
-            });
-        });
-        const feed = document.getElementById("ticket-feed-messages");
-        if (feed) feed.scrollTop = feed.scrollHeight;
+            const data = await res.json();
+            if (data.success) {
+                alert('Đã cấp mã voucher ' + code + ' thành công cho khách hàng để giữ chân!');
+            } else {
+                alert('Lỗi: ' + (data.message || 'Không thể cấp voucher.'));
+            }
+        } catch(e) {
+            alert('Lỗi kết nối máy chủ.');
+        }
     }
 </script>
 {% endblock %}

@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Trợ Lý AI Hỗ Trợ Sau Bán Hàng - CSKH Mobile{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 800; color: #1e293b;">
+            TRỢ LÝ AI CSKH MOBILE (AI ASSISTANT)
+        </h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Bộ công cụ trí tuệ nhân tạo chuyên sâu hỗ trợ sau bán hàng: Gợi ý phản hồi thông minh, Tra cứu tri thức (RAG) và Phân tích cảm xúc khách hàng
+        </p>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+        <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 600; padding: 6px 12px; font-size: 13px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: -2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+            Model: Gemini Flash Active
+        </span>
+    </div>
+</div>
+
+<!-- AI TABS NAVIGATION -->
+<div class="ai-tab-nav" style="display: flex; gap: 12px; border-bottom: 2px solid #e2e8f0; margin-bottom: 24px;">
+    <button class="ai-tab-btn active" data-tab="reply-tab" onclick="switchAITab('reply-tab', this)" style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 15px; font-weight: 700; background: none; border: none; border-bottom: 3px solid #1a73e8; color: #1a73e8; cursor: pointer; transition: all 0.2s;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        1. Gợi Ý Câu Trả Lời (Smart Reply)
+    </button>
+    <button class="ai-tab-btn" data-tab="rag-tab" onclick="switchAITab('rag-tab', this)" style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 15px; font-weight: 600; background: none; border: none; border-bottom: 3px solid transparent; color: #64748b; cursor: pointer; transition: all 0.2s;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        2. Tra Cứu Tri Thức Kỹ Thuật (RAG)
+    </button>
+    <button class="ai-tab-btn" data-tab="sentiment-tab" onclick="switchAITab('sentiment-tab', this)" style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 15px; font-weight: 600; background: none; border: none; border-bottom: 3px solid transparent; color: #64748b; cursor: pointer; transition: all 0.2s;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        3. Phân Tích Cảm Xúc (Sentiment Analysis)
+    </button>
+</div>
+
+<!-- ================================================================= -->
+<!-- TAB 1: AI SMART REPLY SUGGESTION                                  -->
+<!-- ================================================================= -->
+<div id="reply-tab" class="ai-tab-content">
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px;">
+        <!-- Left: Input form -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 14px; font-size: 16px; font-weight: 700; color: #1e293b;">
+                Tình Huống / Tin Nhắn Cần Trả Lời
+            </div>
+
+            <!-- Quick Scenario Presets -->
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Mẫu tình huống phổ biến:</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="setReplyPreset('Màn hình iPhone 15 Pro vừa cập nhật hôm qua đã bị sọc xanh lá cây, shop có bảo hành thay mới không?', 'Anh Nam', 'iPhone 15 Pro')">Sọc xanh màn hình</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="setReplyPreset('Pin máy tôi tụt nhanh quá, mới dùng được nửa ngày đã hết, máy lại nóng rực.', 'Chị Lan', 'Samsung Galaxy S24')">Pin tụt nhanh & nóng</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="setReplyPreset('Máy tôi mới mua được 10 ngày bị lỗi camera chập chờn, chính sách 1 đổi 1 như thế nào shop?', 'Anh Tuấn', 'Xiaomi 14 Ultra')">Chính sách 1 đổi 1</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="setReplyPreset('Cắm sạc không thấy vào điện, đã đổi cáp khác vẫn không được, shop hỗ trợ gấp!', 'Chị Mai', 'Oppo Find N3')">Sạc không vào điện</button>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div>
+                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Tên khách hàng:</label>
+                    <input type="text" id="reply-cust-name" class="form-control" placeholder="VD: Anh Nam" value="Quý khách">
+                </div>
+                <div>
+                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Dòng máy (Model):</label>
+                    <input type="text" id="reply-device-model" class="form-control" placeholder="VD: iPhone 15 Pro" value="iPhone 15 Pro">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 13px; font-weight: 600; color: #475569;">Nội dung tin nhắn khách hàng:</label>
+                <textarea id="reply-message-input" rows="4" class="form-control" placeholder="Dán nội dung tin nhắn của khách hàng vào đây...">Màn hình iPhone 15 Pro vừa cập nhật hôm qua đã bị sọc xanh lá cây, shop có bảo hành thay mới không?</textarea>
+            </div>
+
+            <button type="button" id="btn-generate-reply" onclick="generateSmartReplies()" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px; font-weight: 600; font-size: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+                AI Tạo Gợi Ý Câu Trả Lời
+            </button>
+        </div>
+
+        <!-- Right: Results -->
+        <div>
+            <div class="card" style="margin: 0; padding: 22px;">
+                <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <span style="font-size: 16px; font-weight: 700; color: #1e293b;">Các Mẫu Phản Hồi Được Đề Xuất</span>
+                    <span id="reply-status-badge" class="badge" style="background: #e2e8f0; color: #475569;">Sẵn sàng</span>
+                </div>
+
+                <div id="reply-cards-container" style="display: flex; flex-direction: column; gap: 14px;">
+                    <!-- Card 1 -->
+                    <div class="reply-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #fafafa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #0284c7; text-transform: uppercase;">1. Thấu hiểu & Xoa dịu</span>
+                            <button class="btn btn-sm btn-secondary" onclick="copyReplyText('reply-text-1', this)">Sao chép</button>
+                        </div>
+                        <p id="reply-text-1" style="font-size: 14px; line-height: 1.6; color: #1e293b; margin: 0;">
+                            Dạ em chào anh/chị, em rất tiếc khi biết điện thoại của mình đang gặp tình trạng này. Anh/chị yên tâm nhé, đội ngũ kỹ thuật CSKH bên em sẽ kiểm tra kỹ lưỡng và hỗ trợ chính sách bảo hành tốt nhất cho mình ngay ạ!
+                        </p>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="reply-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #fafafa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #059669; text-transform: uppercase;">2. Hướng dẫn kỹ thuật tại chỗ</span>
+                            <button class="btn btn-sm btn-secondary" onclick="copyReplyText('reply-text-2', this)">Sao chép</button>
+                        </div>
+                        <p id="reply-text-2" style="font-size: 14px; line-height: 1.6; color: #1e293b; margin: 0;">
+                            Dạ đối với trường hợp màn hình xuất hiện sọc sau khi cập nhật, anh/chị thử khởi động lại máy để loại trừ xung đột phần mềm. Nếu sọc vẫn hiện rõ, đây là lỗi hiển thị phần cứng, trung tâm sẽ hỗ trợ gửi thẩm định bảo hành thay màn hình chính hãng cho anh/chị ạ.
+                        </p>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="reply-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #fafafa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #d97706; text-transform: uppercase;">3. Tiếp nhận tại trung tâm</span>
+                            <button class="btn btn-sm btn-secondary" onclick="copyReplyText('reply-text-3', this)">Sao chép</button>
+                        </div>
+                        <p id="reply-text-3" style="font-size: 14px; line-height: 1.6; color: #1e293b; margin: 0;">
+                            Dạ để bảo vệ quyền lợi tối đa cho anh/chị, em mời mình mang máy qua chi nhánh gần nhất để kỹ thuật viên kiểm tra trực tiếp. Máy còn bảo hành và không có dấu hiệu cấn vỡ hay vào nước sẽ được hãng hỗ trợ miễn phí hoàn toàn ạ!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- TAB 2: KNOWLEDGE SEARCH (RAG)                                      -->
+<!-- ================================================================= -->
+<div id="rag-tab" class="ai-tab-content" style="display: none;">
+    <div class="card" style="margin-bottom: 24px; padding: 22px;">
+        <div class="card-title" style="margin-bottom: 12px; font-size: 16px; font-weight: 700; color: #1e293b;">
+            Tra Cứu Tri Thức Xử Lý Sự Cố (Semantic Search & RAG)
+        </div>
+        <p style="color: #64748b; font-size: 13.5px; margin-bottom: 16px;">
+            Nhập hiện tượng hư hỏng, sự cố điện thoại hoặc câu hỏi chính sách để AI trích xuất cẩm nang giải pháp từ cơ sở tri thức chính thức.
+        </p>
+        
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="rag-query-input" class="form-control" style="font-size: 15px; padding: 12px 16px;" placeholder="VD: Màn hình iPhone bị sọc xanh có được đổi mới không? Hoặc Điện thoại sạc không vào pin...">
+            <button type="button" onclick="searchKnowledgeRAG()" class="btn btn-primary" style="white-space: nowrap; padding: 0 24px; font-weight: 600;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                Tra Cứu RAG
+            </button>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+            <span style="font-size: 12px; color: #64748b; align-self: center;">Gợi ý từ khóa:</span>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rag-query-input').value='Màn hình bị sọc xanh'; searchKnowledgeRAG();">Sọc xanh màn hình</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rag-query-input').value='Chính sách 1 đổi 1 trong 30 ngày'; searchKnowledgeRAG();">Chính sách 1 đổi 1</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rag-query-input').value='Tụt pin nhanh và nóng máy'; searchKnowledgeRAG();">Pin tụt nhanh & nóng</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rag-query-input').value='Thủ tục mua trả góp 0%'; searchKnowledgeRAG();">Trả góp 0%</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('rag-query-input').value='Sạc không vào pin'; searchKnowledgeRAG();">Sạc không vào pin</button>
+        </div>
+    </div>
+
+    <!-- AI Synthesis Answer Box -->
+    <div id="rag-answer-box" class="card" style="display: none; padding: 22px; margin-bottom: 24px; border-left: 5px solid #1a73e8; background: #f8fafc;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span class="badge" style="background: #1a73e8; color: white; padding: 4px 10px;">CÂU TRẢ LỜI TỔNG HỢP TỪ AI</span>
+            <span style="font-size: 13px; color: #64748b;">Dựa trên dữ liệu cẩm nang hỗ trợ CSKH chính hãng</span>
+        </div>
+        <div id="rag-ai-text" style="font-size: 15px; line-height: 1.7; color: #1e293b; white-space: pre-line;"></div>
+    </div>
+
+    <!-- Relevant Knowledge Base Articles -->
+    <div class="card" style="padding: 22px;">
+        <div class="card-title" style="margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #1e293b;">
+            Cẩm Nang & Quy Trình Kỹ Thuật Liên Quan
+        </div>
+        <div id="rag-results-list" style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                Nhập từ khóa và nhấn "Tra Cứu RAG" để hiển thị giải pháp xử lý.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- TAB 3: SENTIMENT ANALYSIS                                         -->
+<!-- ================================================================= -->
+<div id="sentiment-tab" class="ai-tab-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px;">
+        <!-- Left: Input Text -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 14px; font-size: 16px; font-weight: 700; color: #1e293b;">
+                Nhập Phản Hồi / Đánh Giá / Hội Thoại Cần Phân Tích
+            </div>
+
+            <!-- Preset Samples -->
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Mẫu hội thoại thực tế:</label>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+                    <button type="button" class="btn btn-sm btn-secondary" style="text-align: left;" onclick="setSentimentSample('Máy tôi mua 30 triệu dùng chưa được 1 tháng đã hỏng màn hình. Mang qua bảo hành thì nhân viên hẹn lần lữa từ chối 1 đổi 1. Làm ăn quá vô trách nhiệm, tôi sẽ đăng phốt và khiếu nại lên hội bảo vệ người tiêu dùng!')">
+                        [Tiêu cực] Bức xúc cao độ: "Máy 30 triệu dùng 1 tháng hỏng, từ chối đổi..."
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" style="text-align: left;" onclick="setSentimentSample('Điện thoại mình dạo này pin tụt khá nhanh và hơi nóng, không biết bên shop có nhận kiểm tra đo độ chai pin không? Chi phí thế nào vậy?')">
+                        [Trung tính] Thắc mắc / Lo lắng: "Pin tụt khá nhanh và nóng máy..."
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" style="text-align: left;" onclick="setSentimentSample('Cảm ơn bạn kỹ thuật viên tên Hoàng tại chi nhánh Quận 3 đã hỗ trợ vệ sinh cổng sạc và dán lại cường lực miễn phí giúp mình. Rất hài lòng với dịch vụ!')">
+                        [Tích cực] Hài lòng / Khen ngợi: "Rất hài lòng, cảm ơn kỹ thuật viên..."
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 13px; font-weight: 600; color: #475569;">Nội dung phản ánh của khách:</label>
+                <textarea id="sentiment-text-input" rows="6" class="form-control" placeholder="Dán nội dung phản ánh, khiếu nại hoặc chat của khách hàng vào đây...">Máy tôi mua 30 triệu dùng chưa được 1 tháng đã hỏng màn hình. Mang qua bảo hành thì nhân viên hẹn lần lữa từ chối 1 đổi 1. Làm ăn quá vô trách nhiệm, tôi sẽ đăng phốt và khiếu nại lên hội bảo vệ người tiêu dùng!</textarea>
+            </div>
+
+            <button type="button" id="btn-run-sentiment" onclick="analyzeSentimentNow()" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px; font-weight: 600; font-size: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                Phân Tích Cảm Xúc & Khuyến Nghị
+            </button>
+        </div>
+
+        <!-- Right: Analysis Dashboard -->
+        <div>
+            <div class="card" style="margin: 0; padding: 22px;">
+                <div class="card-title" style="margin-bottom: 18px; font-size: 16px; font-weight: 700; color: #1e293b;">
+                    Kết Quả Đánh Giá Tâm Lý & Khuyến Nghị CSKH
+                </div>
+
+                <!-- Score and Sentiment Bar -->
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: 20px; align-items: center; padding: 18px; background: #f8fafc; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="text-align: center; border-right: 1px solid #e2e8f0; padding-right: 16px;">
+                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Điểm Cảm Xúc</div>
+                        <div id="sentiment-score-val" style="font-size: 38px; font-weight: 800; color: #ef4444; line-height: 1.1; margin: 6px 0;">15</div>
+                        <div style="font-size: 12px; color: #94a3b8;">Thang điểm 100</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Trạng Thái Tâm Lý:</div>
+                        <div id="sentiment-label-val" style="font-size: 18px; font-weight: 800; color: #ef4444; margin: 4px 0 8px 0;">
+                            Cực kỳ giận dữ / Bức xúc cao độ
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <span id="sentiment-urgency-badge" class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 700;">
+                                Mức khẩn cấp: URGENT
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pain Points Box -->
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase;">Vấn đề cốt lõi (Pain Points):</label>
+                    <ul id="sentiment-pain-points" style="margin: 8px 0 0 0; padding-left: 20px; font-size: 14px; color: #1e293b; line-height: 1.6;">
+                        <li>Thất vọng nghiêm trọng về chất lượng dịch vụ hoặc thiết bị</li>
+                        <li>Yêu cầu bồi thường hoặc xử lý khẩn cấp</li>
+                    </ul>
+                </div>
+
+                <!-- Recommendation Action Box -->
+                <div style="padding: 16px; background: #fff7ed; border-left: 4px solid #f97316; border-radius: 6px; margin-bottom: 14px;">
+                    <div style="font-size: 13px; font-weight: 700; color: #c2410c; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        HÀNH ĐỘNG KHUYẾN NGHỊ CHO CHUYÊN VIÊN:
+                    </div>
+                    <p id="sentiment-recommendation-val" style="font-size: 14px; line-height: 1.6; color: #9a3412; margin: 0;">
+                        Chuyển cấp ngay cho Quản lý / Trưởng ca, gọi điện thoại trực tiếp xin lỗi và đề xuất bồi thường thích đáng.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchAITab(tabId, btn) {
+    document.querySelectorAll('.ai-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.ai-tab-btn').forEach(b => {
+        b.style.borderBottom = '3px solid transparent';
+        b.style.color = '#64748b';
+        b.classList.remove('active');
+    });
+
+    document.getElementById(tabId).style.display = 'block';
+    btn.style.borderBottom = '3px solid #1a73e8';
+    btn.style.color = '#1a73e8';
+    btn.classList.add('active');
+}
+
+function setReplyPreset(msg, name, device) {
+    document.getElementById('reply-message-input').value = msg;
+    document.getElementById('reply-cust-name').value = name;
+    document.getElementById('reply-device-model').value = device;
+}
+
+function setSentimentSample(text) {
+    document.getElementById('sentiment-text-input').value = text;
+}
+
+async function generateSmartReplies() {
+    const msg = document.getElementById('reply-message-input').value.trim();
+    const custName = document.getElementById('reply-cust-name').value.trim() || 'Quý khách';
+    const device = document.getElementById('reply-device-model').value.trim() || 'thiết bị';
+    const statusBadge = document.getElementById('reply-status-badge');
+    const btn = document.getElementById('btn-generate-reply');
+
+    if (!msg) {
+        alert('Vui lòng nhập nội dung tin nhắn của khách hàng.');
+        return;
+    }
+
+    statusBadge.textContent = 'Đang phân tích...';
+    statusBadge.style.background = '#e0f2fe';
+    statusBadge.style.color = '#0284c7';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/ai/smart-reply', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message: msg, customer_name: custName, device_model: device })
+        });
+        const data = await res.json();
+        if (data.success && data.replies) {
+            if (data.replies[0]) document.getElementById('reply-text-1').textContent = data.replies[0].text;
+            if (data.replies[1]) document.getElementById('reply-text-2').textContent = data.replies[1].text;
+            if (data.replies[2]) document.getElementById('reply-text-3').textContent = data.replies[2].text;
+            statusBadge.textContent = 'Hoàn tất';
+            statusBadge.style.background = '#dcfce7';
+            statusBadge.style.color = '#15803d';
+        }
+    } catch (e) {
+        console.error(e);
+        statusBadge.textContent = 'Lỗi kết nối';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function searchKnowledgeRAG() {
+    const query = document.getElementById('rag-query-input').value.trim();
+    if (!query) {
+        alert('Vui lòng nhập nội dung cần tra cứu.');
+        return;
+    }
+
+    const answerBox = document.getElementById('rag-answer-box');
+    const aiText = document.getElementById('rag-ai-text');
+    const resultsList = document.getElementById('rag-results-list');
+
+    aiText.textContent = 'Đang tìm kiếm và tổng hợp giải pháp từ tài liệu kỹ thuật...';
+    answerBox.style.display = 'block';
+
+    try {
+        const res = await fetch('/api/ai/rag-search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ query: query })
+        });
+        const data = await res.json();
+        if (data.success) {
+            aiText.textContent = data.ai_answer || 'Không tìm thấy câu trả lời phù hợp.';
+
+            if (data.faqs && data.faqs.length > 0) {
+                let html = '';
+                data.faqs.forEach(faq => {
+                    html += `
+                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <strong style="color: #1e293b; font-size: 15px;">${faq.issue_name}</strong>
+                            <div style="display: flex; gap: 6px;">
+                                <span class="badge" style="background: #e0e7ff; color: #3730a3;">${faq.category}</span>
+                                <span class="badge" style="background: #f1f5f9; color: #475569;">${faq.brand || 'Tất cả'}</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            <strong>Hiện tượng:</strong> ${faq.symptom}
+                        </div>
+                        <div style="font-size: 14px; color: #047857; background: #ecfdf5; padding: 10px 12px; border-radius: 6px; line-height: 1.5;">
+                            <strong>Giải pháp chính sách:</strong> ${faq.solution}
+                        </div>
+                    </div>`;
+                });
+                resultsList.innerHTML = html;
+            } else {
+                resultsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">Không tìm thấy bài viết kỹ thuật trực tiếp trong cơ sở tri thức.</div>';
+            }
+        }
+    } catch (e) {
+        aiText.textContent = 'Lỗi trong quá trình tra cứu tri thức.';
+        console.error(e);
+    }
+}
+
+async function analyzeSentimentNow() {
+    const text = document.getElementById('sentiment-text-input').value.trim();
+    if (!text) {
+        alert('Vui lòng nhập nội dung cần phân tích.');
+        return;
+    }
+
+    const btn = document.getElementById('btn-run-sentiment');
+    btn.disabled = true;
+    btn.textContent = 'Đang phân tích tâm lý...';
+
+    try {
+        const res = await fetch('/api/ai/sentiment-analysis', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ text: text })
+        });
+        const data = await res.json();
+        if (data.success && data.result) {
+            const r = data.result;
+            const scoreEl = document.getElementById('sentiment-score-val');
+            const labelEl = document.getElementById('sentiment-label-val');
+            const badgeEl = document.getElementById('sentiment-urgency-badge');
+            const pointsEl = document.getElementById('sentiment-pain-points');
+            const recEl = document.getElementById('sentiment-recommendation-val');
+
+            scoreEl.textContent = r.score;
+            labelEl.textContent = r.label;
+            recEl.textContent = r.recommendation;
+
+            if (r.score < 30) {
+                scoreEl.style.color = '#ef4444';
+                labelEl.style.color = '#ef4444';
+            } else if (r.score < 70) {
+                scoreEl.style.color = '#f59e0b';
+                labelEl.style.color = '#f59e0b';
+            } else {
+                scoreEl.style.color = '#10b981';
+                labelEl.style.color = '#10b981';
+            }
+
+            badgeEl.textContent = `Mức ưu tiên xử lý: ${r.urgency.toUpperCase()}`;
+            if (r.urgency === 'urgent' || r.urgency === 'high') {
+                badgeEl.style.background = '#fee2e2';
+                badgeEl.style.color = '#b91c1c';
+            } else {
+                badgeEl.style.background = '#dcfce7';
+                badgeEl.style.color = '#15803d';
+            }
+
+            if (r.pain_points && r.pain_points.length > 0) {
+                pointsEl.innerHTML = r.pain_points.map(p => `<li>${p}</li>`).join('');
+            } else {
+                pointsEl.innerHTML = '<li>Không ghi nhận bức xúc tiêu cực</li>';
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Phân Tích Cảm Xúc & Khuyến Nghị';
+    }
+}
+
+function copyReplyText(elementId, btn) {
+    const text = document.getElementById(elementId).innerText.trim();
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.innerText;
+        btn.innerText = 'Đã chép!';
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+        setTimeout(() => {
+            btn.innerText = orig;
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+        }, 1500);
+    });
+}
+</script>
+{% endblock %}

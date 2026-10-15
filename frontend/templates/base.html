@@ -9,147 +9,218 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <!-- Top Navigation Bar -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="nav-brand">
-                <img src="{{ url_for('static', filename='cskh_brand_icon.png') }}" alt="CSKH Mobile" class="brand-logo-img">
-                <div class="brand-text-container">
-                    <div class="brand-title-row">
-                        <span class="brand-title-text">CSKH MOBILE</span>
-                        <span class="brand-badge">AI CHAT</span>
+        <!-- Top Navigation Bar -->
+        <nav class="navbar" style="background: #252b5c; border-bottom: none; height: 64px;">
+        <div class="nav-container" style="display: flex; align-items: center; justify-content: space-between; height: 100%;">
+            <!-- LEFT: BRAND & SIDEBAR TOGGLE -->
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="/" class="nav-brand" style="display: flex; align-items: center; text-decoration: none;">
+                    <div class="brand-title-text" style="color: white; font-family: 'Michroma', sans-serif; font-size: 19px; letter-spacing: 1px; line-height: 1;">
+                        CSKH<span style="color: #f97316;">/</span>MOBILE
                     </div>
-                    <span class="brand-subtitle-text">HỆ THỐNG CHĂM SÓC KHÁCH HÀNG</span>
-                </div>
-            </a>
+                </a>
 
-            <!-- Mobile Hamburger Button -->
-            <button class="mobile-toggle" id="mobile-toggle" aria-label="Mở Menu điều hướng" type="button">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
+                <!-- BREADCRUMB NAVIGATION (THEO ĐƯỜNG DẪN) -->
+                <div class="nav-breadcrumb-wrapper desktop-only" style="display: flex; align-items: center; gap: 10px; margin-left: 12px; padding-left: 16px; border-left: 1px solid rgba(255, 255, 255, 0.18);">
+                    <span style="color: #94a3b8; display: inline-flex; align-items: center;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </span>
 
-            <!-- Nav Collapse / Off-canvas Mobile Drawer -->
-            <div class="nav-collapse" id="nav-collapse">
-                <div class="mobile-drawer-header">
-                    <div class="drawer-user-info">
-                        {% if session.get('user_id') %}
-                            <div class="drawer-avatar">{{ (session.get('full_name') or session.get('username'))[:1]|upper }}</div>
-                            <div class="drawer-user-meta">
-                                <div class="drawer-username">{{ session.get('full_name') or session.get('username') }}</div>
-                                <span class="role-pill role-{{ session.get('role') }}">{{ session.get('role') }}</span>
-                            </div>
+                    <nav aria-label="breadcrumb" style="display: flex; align-items: center; gap: 8px; font-size: 13.5px;">
+                        <!-- Gốc Trang chủ / Cổng hỗ trợ -->
+                        {% if session.get('role') == 'customer' %}
+                            <a href="/portal" style="color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: color 0.2s;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#cbd5e1'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                Trang chủ
+                            </a>
                         {% else %}
-                            <div class="drawer-title">CSKH Mobile AI</div>
-                            <small style="color: #64748b;">Hệ thống CRM & Hỗ trợ khách hàng</small>
+                            <a href="/dashboard" style="color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: color 0.2s;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#cbd5e1'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                Trang chủ
+                            </a>
                         {% endif %}
-                    </div>
-                    <button class="drawer-close" id="drawer-close" aria-label="Đóng menu" type="button">&times;</button>
-                </div>
 
-                <ul class="nav-menu">
-                    {% if session.get('user_id') %}
-                        {% if session.get('role') in ['agent', 'admin'] %}
-                            <li><a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a></li>
-                            <li><a href="/inbox" class="nav-link {% if request.path == '/inbox' %}active{% endif %}">Inbox tư vấn</a></li>
-                            <li><a href="/products" class="nav-link {% if '/products' in request.path %}active{% endif %}">Sản phẩm</a></li>
-                            <li><a href="/sales-orders" class="nav-link {% if '/sales-orders' in request.path %}active{% endif %}">Đơn hàng</a></li>
-                            <li><a href="/customers" class="nav-link {% if '/customers' in request.path %}active{% endif %}">Khách hàng</a></li>
-                            <li><a href="/tickets" class="nav-link {% if '/tickets' in request.path %}active{% endif %}">Tickets</a></li>
-                            <li><a href="/kanban" class="nav-link {% if '/kanban' in request.path %}active{% endif %}">Kanban</a></li>
-                        {% elif session.get('role') == 'customer' %}
-                            <li><a href="/portal" class="nav-link {% if request.path == '/portal' %}active{% endif %}">Cổng hỗ trợ</a></li>
-                            <li><a href="/products" class="nav-link {% if '/products' in request.path %}active{% endif %}">Xem sản phẩm</a></li>
-                            <li><a href="/warranties" class="nav-link {% if '/warranties' in request.path %}active{% endif %}">Sổ bảo hành</a></li>
-                            <li><a href="/portal/new-ticket" class="nav-link {% if request.path == '/portal/new-ticket' %}active{% endif %}">Gửi yêu cầu</a></li>
-                        {% endif %}
-                    {% else %}
-                        <li><a href="/products" class="nav-link {% if '/products' in request.path %}active{% endif %}">Danh mục điện thoại</a></li>
-                        <li><a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Tra cứu sự cố & FAQs</a></li>
-                    {% endif %}
-                </ul>
+                        <span style="color: #64748b; font-size: 13px;">›</span>
 
-                <div class="nav-actions">
-                    {% if session.get('user_id') %}
-                        {% if session.get('role') in ['agent', 'admin'] %}
-                            <button class="btn btn-sm btn-softphone" id="btn-toggle-softphone" title="Mở Softphone" type="button">Gọi điện</button>
+                        <!-- Phân cấp danh mục chức năng -->
+                        {% if '/portal/ticket/' in request.path %}
+                            <a href="/portal" style="color: #cbd5e1; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#cbd5e1'">Cổng hỗ trợ</a>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Trao đổi Ticket</span>
+                        {% elif request.path == '/portal/new-ticket' %}
+                            <a href="/portal" style="color: #cbd5e1; text-decoration: none;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#cbd5e1'">Cổng hỗ trợ</a>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Gửi phiếu hỗ trợ mới</span>
+                        {% elif request.path == '/portal' %}
+                            <span style="color: #ffffff; font-weight: 700;">Cổng hỗ trợ khách hàng</span>
+                        {% elif '/tickets/' in request.path and request.path != '/tickets' and request.path != '/tickets/create' %}
+                            <a href="/tickets" style="color: #cbd5e1; text-decoration: none;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#cbd5e1'">Tickets</a>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Chi tiết phiếu xử lý</span>
+                        {% elif request.path == '/tickets/create' %}
+                            <a href="/tickets" style="color: #cbd5e1; text-decoration: none;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#cbd5e1'">Tickets</a>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Tạo ticket mới</span>
+                        {% elif request.path == '/tickets' %}
+                            <span style="color: #ffffff; font-weight: 700;">Quản lý Ticket hỗ trợ</span>
+                        {% elif '/customers/' in request.path and request.path != '/customers' %}
+                            <a href="/customers" style="color: #cbd5e1; text-decoration: none;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#cbd5e1'">Khách hàng</a>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Hồ sơ Customer 360</span>
+                        {% elif request.path == '/customers' %}
+                            <span style="color: #ffffff; font-weight: 700;">Danh bạ khách hàng</span>
+                        {% elif request.path == '/devices' %}
+                            <span style="color: #ffffff; font-weight: 700;">Danh sách thiết bị khách hàng</span>
+                        {% elif request.path == '/warranties' %}
+                            <span style="color: #ffffff; font-weight: 700;">Thiết bị & Sổ bảo hành</span>
+                        {% elif request.path == '/ai-assistant' %}
+                            <span style="color: #ffffff; font-weight: 700;">Trợ lý AI CSKH Mobile (Reply/RAG/Sentiment)</span>
+                        {% elif request.path == '/settings' %}
+                            <span style="color: #cbd5e1;">Hệ thống</span>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Cài đặt hệ thống CSKH</span>
+                        {% elif request.path == '/inbox' %}
+                            <span style="color: #ffffff; font-weight: 700;">Hộp thư đa kênh hợp nhất</span>
+                        {% elif request.path == '/kanban' %}
+                            <span style="color: #ffffff; font-weight: 700;">Bảng Kanban Ticket hỗ trợ</span>
+                        {% elif request.path == '/shifts' %}
+                            <span style="color: #ffffff; font-weight: 700;">Quản lý ca trực & Chăm sóc</span>
+                        {% elif request.path == '/products' %}
+                            <span style="color: #ffffff; font-weight: 700;">Danh mục sản phẩm & Tồn kho</span>
+                        {% elif request.path == '/consultation' %}
+                            <span style="color: #ffffff; font-weight: 700;">Trợ lý AI tư vấn điện thoại</span>
+                        {% elif request.path == '/quotations' %}
+                            <span style="color: #ffffff; font-weight: 700;">Danh sách báo giá</span>
+                        {% elif request.path == '/sales-orders' %}
+                            <span style="color: #ffffff; font-weight: 700;">Đơn hàng bán trực tiếp</span>
+                        {% elif request.path == '/users' %}
+                            <span style="color: #cbd5e1;">Hệ thống</span>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Quản lý tài khoản & Phân quyền</span>
+                        {% elif request.path == '/automation' %}
+                            <span style="color: #cbd5e1;">Hệ thống</span>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">Kịch bản phản hồi tự động</span>
+                        {% elif request.path == '/agent' %}
+                            <span style="color: #cbd5e1;">Hệ thống</span>
+                            <span style="color: #64748b; font-size: 13px;">›</span>
+                            <span style="color: #ffffff; font-weight: 700;">AI Phân tích BA & Kiến trúc</span>
+                        {% elif request.path == '/reports' %}
+                            <span style="color: #ffffff; font-weight: 700;">Báo cáo thống kê CSKH</span>
+                        {% elif request.path == '/profile' %}
+                            <span style="color: #ffffff; font-weight: 700;">Hồ sơ cá nhân</span>
+                        {% elif request.path == '/faqs' or request.path == '/' %}
+                            <span style="color: #ffffff; font-weight: 700;">Kho cẩm nang hướng dẫn tự xử lý</span>
+                        {% else %}
+                            <span style="color: #ffffff; font-weight: 700;">{{ request.path.strip('/')|capitalize }}</span>
                         {% endif %}
-                        
-                        <div class="user-badge desktop-only">
-                            <span>{{ session.get('full_name') or session.get('username') }}</span>
-                            <span class="role-pill role-{{ session.get('role') }}">{{ session.get('role') }}</span>
-                        </div>
-                        <a href="/logout" class="btn btn-sm btn-back" title="Đăng xuất">Đăng xuất</a>
-                    {% else %}
-                        <a href="/login" class="btn btn-sm btn-primary">Đăng nhập</a>
-                        <a href="/register" class="btn btn-sm btn-secondary">Đăng ký</a>
-                    {% endif %}
+                    </nav>
                 </div>
             </div>
+
+            <!-- RIGHT: ACTIONS -->
+            <div class="nav-actions" style="display: flex; align-items: center; min-width: 250px; justify-content: flex-end; gap: 20px;">
+                {% if session.get('user_id') %}
+                    <!-- Notification Bell -->
+                    <div style="position: relative; cursor: pointer; color: white;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <span style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; border-radius: 10px; padding: 2px 6px;">18</span>
+                    </div>
+
+                    <!-- User Profile Dropdown -->
+                    <div class="user-profile-dropdown" style="position: relative; display: inline-block;">
+                        <div id="profile-toggle" style="display:flex; align-items:center; gap: 10px; cursor: pointer; color: white;">
+                            <div class="drawer-avatar" style="width: 36px; height: 36px; font-size: 15px; background: #475569; color: white; display:flex; align-items:center; justify-content:center; border-radius:50%; font-weight: bold;">
+                                {{ (session.get('full_name') or session.get('username'))[:1]|upper }}
+                            </div>
+                            <span style="font-size: 14px; font-weight: 500;">{{ session.get('full_name') or session.get('username') }}</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #cbd5e1;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        
+                        <div id="profile-menu" class="dropdown-menu-content" style="display: none; position: absolute; right: 0; top: 120%; background: white; min-width: 240px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; overflow: hidden; border: 1px solid #e2e8f0; color: #334155; padding: 8px 0;">
+                            <div style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 4px;">
+                                <div style="font-weight: 600; font-size: 15px; color: #1e293b;">{{ session.get('full_name') or session.get('username') }}</div>
+                                <div style="font-size: 13px; color: #64748b;">{{ session.get('email') or (session.get('username') + '@cskh.vn') }}</div>
+                                <div style="margin-top: 4px;">
+                                    <span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:11px; text-transform:uppercase;">{{ session.get('role') }}</span>
+                                </div>
+                            </div>
+                            
+                            <div style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+                                <a href="/profile" style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; text-decoration: none; color: #475569; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                    Hồ sơ cá nhân
+                                </a>
+                                {% if session.get('role') == 'admin' %}
+                                <a href="/users" style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; text-decoration: none; color: #475569; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                    Cài đặt & Phân quyền
+                                </a>
+                                {% endif %}
+                            </div>
+                            
+                            <div style="padding-top: 8px;">
+                                <a href="/logout" style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; text-decoration: none; color: #ef4444; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#fef2f2'" onmouseout="this.style.backgroundColor='transparent'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                    Đăng xuất
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="/login" style="background: rgba(255,255,255,0.1); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.2s;">Đăng nhập</a>
+                    <a href="/register" style="background: white; color: #252b5c; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; transition: background 0.2s;">Đăng ký</a>
+                {% endif %}
+            </div>
+
+            <!-- Mobile Hamburger Button -->
+            <button class="mobile-toggle" id="mobile-toggle" aria-label="Mở Menu điều hướng" type="button" style="display: none;">
+                <span style="background: white;"></span>
+                <span style="background: white;"></span>
+                <span style="background: white;"></span>
+            </button>
         </div>
     </nav>
     <div class="mobile-overlay" id="mobile-overlay"></div>
 
-    <!-- Main Content Container -->
-    <div class="container">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    <!-- MAIN APP LAYOUT (Sidebar + Content) -->
+    <div class="app-layout">
+        <!-- Block 1: Sidebar Navigation (Đã tách thành component) -->
+        {% include 'components/sidebar.html' %}
 
-        {% block content %}{% endblock %}
-    </div>
+        <!-- Main Content Wrapper -->
+        <main class="app-main-content">
+            <div class="app-content-inner">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
 
-    <!-- Footer Doanh Nghiệp (Thông tin Quản trị & Chính sách Bảo mật) -->
-    <footer class="site-footer">
-        <div class="footer-container">
-            <!-- Cột trái: Thương hiệu, Bản quyền & Chính sách bảo mật -->
-            <div class="footer-col">
-                <div class="footer-brand">
-                    <img src="{{ url_for('static', filename='cskh_brand_icon.png') }}" alt="CSKH Mobile" class="footer-logo">
-                    <div class="footer-brand-text">
-                        <div class="footer-brand-title">CSKH MOBILE</div>
-                        <div class="footer-brand-sub">HỆ THỐNG QUẢN LÝ DỮ LIỆU & CHĂM SÓC KHÁCH HÀNG AI</div>
+                {% block content %}{% endblock %}
+            </div>
+            
+            <footer class="app-footer">
+                <div class="footer-container" style="max-width: 100%; padding: 0 20px;">
+                    <div class="footer-col" style="flex: 1; text-align: center;">
+                        <p>© 2026 CSKH Mobile. Hotline: <a href="tel:0868643044">0868643044</a></p>
                     </div>
                 </div>
-                <div class="footer-desc">
-                    <p>Bản quyền thuộc về Hệ thống Quản trị & CSKH Mobile</p>
-                    <p>Hotline hỗ trợ: <a href="tel:0868643044">0868643044</a> | Kỹ thuật / Zalo: <a href="tel:0868643044">0868643044</a></p>
-                    <p><strong>Chính sách bảo mật:</strong> Hệ thống cam kết bảo mật 100% dữ liệu thông tin khách hàng (PII), lịch sử bảo hành thiết bị và hội thoại trao đổi theo quy chuẩn an toàn thông tin.</p>
-                    <p class="footer-note">Mọi hành vi sao chép dữ liệu hoặc truy cập trái phép khi chưa có sự đồng ý của Admin đều bị nghiêm cấm.</p>
-                </div>
-            </div>
-
-            <!-- Cột phải: Thông tin Quản trị viên Admin & Liên hệ -->
-            <div class="footer-col">
-                <div class="footer-section-title">Người chịu trách nhiệm & Quản lý hệ thống:</div>
-                <div class="footer-admin-name">Admin Hệ thống - Phụ trách Kỹ thuật & Vận hành Web</div>
-                
-                <div class="footer-contact-list">
-                    <p><strong>Đơn vị phát triển:</strong> Ban Quản trị Kỹ thuật Phần mềm CSKH Mobile</p>
-                    <p><strong>Hotline:</strong> <a href="tel:0868643044">0868643044</a> (Hỗ trợ 24/7)</p>
-                    <p><strong>Email liên hệ:</strong> <a href="mailto:huu17102006@gmail.com">huu17102006@gmail.com</a></p>
-                    <p><strong>Tiêu chuẩn an toàn:</strong> Xác thực phân quyền đa cấp độ RBAC, mã hóa dữ liệu đầu cuối và tự động ghi nhật ký kiểm toán hệ thống (Audit Logs).</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="footer-bottom-bar">
-            <div class="footer-bottom-content">
-                <span>© 2026 CSKH Mobile. Hệ thống được xây dựng và quản trị bởi Admin.</span>
-                <span>Hotline: <a href="tel:0868643044">0868643044</a> | Email: <a href="mailto:huu17102006@gmail.com">huu17102006@gmail.com</a></span>
-            </div>
-        </div>
-    </footer>
+            </footer>
+        </main>
+    </div>
 
     <!-- Softphone Dialer Modal (Agent & Admin) -->
     {% if session.get('user_id') and session.get('role') in ['agent', 'admin'] %}
@@ -253,6 +324,7 @@
                     body: `CallSid=${window.currentCallSid}&CallDuration=42&CallStatus=completed`
                 });
             }
+        } // Added missing closing brace
         // Mobile Navigation Drawer Toggle
         const mobileToggle = document.getElementById("mobile-toggle");
         const navCollapse = document.getElementById("nav-collapse");
@@ -263,19 +335,19 @@
             if (mobileToggle) mobileToggle.classList.remove("active");
             if (navCollapse) navCollapse.classList.remove("show");
             if (mobileOverlay) mobileOverlay.classList.remove("show");
-            document.body.style.overflow = "";
+            // document.body.style.overflow = "";
         }
 
         function openMobileDrawer() {
             if (mobileToggle) mobileToggle.classList.add("active");
             if (navCollapse) navCollapse.classList.add("show");
             if (mobileOverlay) mobileOverlay.classList.add("show");
-            document.body.style.overflow = "hidden";
+            // document.body.style.overflow = "hidden";
         }
 
         if (mobileToggle) {
             mobileToggle.addEventListener("click", () => {
-                if (navCollapse && navCollapse.classList.contains("show")) {
+                if (mobileToggle.classList.contains("active")) {
                     closeMobileDrawer();
                 } else {
                     openMobileDrawer();
@@ -302,41 +374,9 @@
         }
     </script>
 
-    <!-- Nút bong bóng chat AI hỗ trợ -->
-    <button id="chat-button" class="chat-button" title="Trợ lý AI hỗ trợ 24/7" aria-label="Mở chat AI">
-        <img src="{{ url_for('static', filename='chatbot_fitted_logo.png') }}" alt="AI Logo">
-    </button>
+    <!-- Block 5: Nhóm Trợ lý (AI Chatbot) -->
+    {% include 'components/ai_chatbot.html' %}
 
-    <!-- Cửa sổ Chat AI -->
-    <div id="chat-window" class="chat-window">
-        <div id="chat-header" class="chat-header" style="background: linear-gradient(135deg, #091227 0%, #1e3a8a 100%);">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <img src="{{ url_for('static', filename='chatbot_logo.png') }}" alt="AI Logo" style="width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #00d2ff; object-fit: cover;">
-                <div>
-                    <div style="font-weight: 700; font-size: 15px; color: #fff; line-height: 1.2;">CHATBOT AI CSKH</div>
-                    <div style="font-size: 11px; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
-                        <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e;"></span>
-                        Trực tuyến 24/7
-                    </div>
-                </div>
-            </div>
-            <span id="chat-close" style="cursor: pointer; font-size: 22px; line-height: 1; opacity: 0.85; color: white;">&times;</span>
-        </div>
-        <div id="chat-messages" class="chat-messages">
-            <div class="chat-message bot">
-                <div class="message-content">Xin chào! Tôi là trợ lý AI thông minh hỗ trợ khách hàng. Bạn có thể hỏi tôi bất kỳ điều gì về điện thoại, bảo hành, chính sách mua hàng hoặc hỗ trợ kỹ thuật!</div>
-            </div>
-        </div>
-        <div class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="Hỏi tôi về chính sách, lỗi máy..." autocomplete="off">
-            <button id="chat-send" title="Gửi tin nhắn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
-            </button>
-        </div>
-    </div>
 
     <!-- Mobile Bottom Navigation Bar (Dành riêng cho màn hình điện thoại) -->
     <div class="mobile-bottom-bar">
@@ -354,11 +394,11 @@
                     </span>
                     <span class="bottom-bar-label">Hộp thư</span>
                 </a>
-                <a href="/products" class="bottom-bar-item {% if '/products' in request.path %}active{% endif %}">
+                <a href="/warranties" class="bottom-bar-item {% if '/warranties' in request.path %}active{% endif %}">
                     <span class="bottom-bar-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                     </span>
-                    <span class="bottom-bar-label">Sản phẩm</span>
+                    <span class="bottom-bar-label">Thiết bị</span>
                 </a>
                 <a href="/tickets" class="bottom-bar-item {% if '/tickets' in request.path %}active{% endif %}">
                     <span class="bottom-bar-icon">
@@ -379,17 +419,11 @@
                     </span>
                     <span class="bottom-bar-label">Trang chủ</span>
                 </a>
-                <a href="/products" class="bottom-bar-item {% if '/products' in request.path %}active{% endif %}">
+                <a href="/warranties" class="bottom-bar-item {% if '/warranties' in request.path %}active{% endif %}">
                     <span class="bottom-bar-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                     </span>
-                    <span class="bottom-bar-label">Sản phẩm</span>
-                </a>
-                <a href="/warranties" class="bottom-bar-item {% if '/warranties' in request.path %}active{% endif %}">
-                    <span class="bottom-bar-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                    </span>
-                    <span class="bottom-bar-label">Bảo hành</span>
+                    <span class="bottom-bar-label">Thiết bị</span>
                 </a>
                 <a href="/portal/new-ticket" class="bottom-bar-item {% if request.path == '/portal/new-ticket' %}active{% endif %}">
                     <span class="bottom-bar-icon">
@@ -434,5 +468,29 @@
 
     <script src="{{ url_for('static', filename='chat.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var profileToggle = document.getElementById('profile-toggle');
+            var profileMenu = document.getElementById('profile-menu');
+            
+            if (profileToggle && profileMenu) {
+                profileToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (profileMenu.style.display === 'none' || profileMenu.style.display === '') {
+                        profileMenu.style.display = 'block';
+                    } else {
+                        profileMenu.style.display = 'none';
+                    }
+                });
+                
+                document.addEventListener('click', function(e) {
+                    if (!profileMenu.contains(e.target) && !profileToggle.contains(e.target)) {
+                        profileMenu.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

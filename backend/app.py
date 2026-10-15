@@ -25,14 +25,14 @@ load_dotenv()
 # Database imports
 from database.db import (
     get_connection, get_faqs, get_faq, add_faq, update_faq, delete_faq, search_faqs,
-    get_user_by_username, get_user_by_email, get_user_by_id, create_user, get_all_agents, get_all_users, update_user_role_status,
-    get_or_create_customer, get_customer_by_id, get_customer_by_phone, get_customer_by_user_id, search_customers, get_all_customers, update_customer_notes,
-    create_ticket, get_ticket_by_id, get_ticket_by_code, get_tickets, update_ticket_status, assign_ticket, add_ticket_message, get_ticket_messages,
-    create_ticket_survey, get_ticket_survey, get_customer_surveys,
+    get_user_by_username, get_user_by_email, get_user_by_id, create_user, get_all_agents, get_all_users, update_user_role_status, update_user_profile,
+    get_or_create_customer, get_customer_by_id, get_customer_by_phone, get_customer_by_user_id, search_customers, get_all_customers, update_customer_notes, update_customer_full,
+    create_ticket, get_ticket_by_id, get_ticket_by_code, get_tickets, update_ticket_status, assign_ticket, add_ticket_message, get_ticket_messages, delete_ticket,
+    create_ticket_survey, get_ticket_survey, get_customer_surveys, get_all_surveys,
     get_omnichannel_conversations, get_conversation_messages, save_omnichannel_message,
     get_orders_by_phone, get_all_orders,
     get_work_shifts, create_work_shift, checkin_shift,
-    get_sales_opportunities, create_sales_opportunity, update_opportunity_stage,
+    get_sales_opportunities, create_sales_opportunity, update_opportunity_stage, delete_opportunity,
     get_auto_replies, save_auto_reply,
     create_call_log, get_call_logs,
     log_audit, get_audit_logs,
@@ -43,7 +43,10 @@ from database.db import (
     create_quotation, get_quotations, get_quotation_by_id, update_quotation_status,
     create_sales_order, get_sales_orders, get_sales_order_by_id, update_sales_order_status, get_order_status_history,
     create_warranty, get_warranties, get_warranty_by_id, get_followup_reminders, complete_followup_reminder,
-    get_promotions, get_promotion_by_code, get_sales_analytics
+    get_promotions, get_promotion_by_code, get_sales_analytics,
+    get_all_vouchers, get_customer_vouchers, grant_customer_voucher,
+    get_all_notifications, create_notification,
+    get_agent_performance_report
 )
 from database.init_db import init_database
 
@@ -83,6 +86,7 @@ except Exception as e:
 # 1. TRANG CHỦ / KNOWLEDGE BASE (GIỮ NGUYÊN 100% TƯƠNG THÍCH CỦA DỰ ÁN)
 # =====================================================================
 @app.route("/")
+@app.route("/faqs")
 def index():
     keyword = request.args.get("keyword", "").strip()
     if keyword:
@@ -92,6 +96,7 @@ def index():
     return render_template("faqs.html", faqs=faqs, keyword=keyword)
 
 @app.route("/add", methods=["GET", "POST"])
+@app.route("/add-faq", methods=["GET", "POST"])
 @login_required
 @role_required("agent", "admin")
 def add():
@@ -105,10 +110,11 @@ def add():
         )
         log_audit(session.get("user_id"), session.get("username"), "CREATE_FAQ", "FAQ", None, request.form["issue_name"])
         flash("Đã thêm dữ liệu hỗ trợ mới thành công!", "success")
-        return redirect("/")
+        return redirect("/faqs")
     return render_template("add_faq.html")
 
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
+@app.route("/edit-faq/<int:id>", methods=["GET", "POST"])
 @login_required
 @role_required("agent", "admin")
 def edit(id):
@@ -123,18 +129,19 @@ def edit(id):
         )
         log_audit(session.get("user_id"), session.get("username"), "UPDATE_FAQ", "FAQ", id, request.form["issue_name"])
         flash(f"Đã cập nhật dữ liệu hỗ trợ #{id} thành công!", "success")
-        return redirect("/")
+        return redirect("/faqs")
     faq = get_faq(id)
     return render_template("edit_faq.html", faq=faq)
 
 @app.route("/delete/<int:id>")
+@app.route("/delete-faq/<int:id>")
 @login_required
 @role_required("admin")
 def delete(id):
     delete_faq(id)
     log_audit(session.get("user_id"), session.get("username"), "DELETE_FAQ", "FAQ", id)
     flash(f"Đã xóa dữ liệu hỗ trợ #{id}!", "info")
-    return redirect("/")
+    return redirect("/faqs")
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
@@ -144,6 +151,67 @@ def api_chat():
         if not question:
             return jsonify({"success": False, "message": "Vui lòng nhập câu hỏi."}), 400
             
+        # 1. Quản lý trạng thái phiên chat (Human Handoff)
+        chat_mode = session.get("chat_mode", "bot")
+        
+        # NẾU ĐÃ CHUYỂN CHO NHÂN VIÊN: Không gọi AI, lưu tin nhắn vào Inbox
+        if chat_mode == "human":
+            ticket_id = session.get("chat_ticket_id")
+            if ticket_id:
+                from database.db import add_ticket_message
+                user_id = session.get("user_id", 0)
+                user_name = session.get("full_name", "Khách hàng trực tuyến")
+                add_ticket_message(ticket_id, "customer", user_id, user_name, question)
+            return jsonify({
+                "success": True,
+                "answer": "" # Không hiện tin nhắn tự động nữa vì đã vào chế độ chat với người
+            })
+            
+        # NẾU VẪN LÀ BOT XỬ LÝ: Lọc rác
+        import re
+        if len(question) < 2 or not re.search(r'[a-zA-Z0-9a-zA-ZÀ-ỹ]', question):
+            return jsonify({
+                "success": True,
+                "answer": "Dạ, em chưa nhận được thông tin rõ ràng. Anh/chị có thể mô tả chi tiết hơn vấn đề mình đang gặp phải không ạ?"
+            })
+            
+        # 2. Điểm kích hoạt chuyển giao (Handoff Trigger)
+        handoff_keywords = ['gặp nhân viên', 'tư vấn viên', 'người thật', 'tổng đài', 'hỗ trợ trực tiếp']
+        q_lower = question.lower()
+        if any(kw in q_lower for kw in handoff_keywords):
+            session["chat_mode"] = "human"
+            from database.db import create_ticket
+            
+            user_id = session.get("user_id", 0)
+            user_name = session.get("full_name", "Khách hàng trực tuyến")
+            phone = session.get("phone", "")
+            email = session.get("email", "")
+            
+            # Lấy customer_id thực tế từ bảng customers (không dùng user_id của bảng users)
+            actual_customer_id = session.get("customer_id")
+            if not actual_customer_id and user_id:
+                cust_for_ticket = get_or_create_customer(full_name=user_name, phone=phone, email=email, user_id=user_id)
+                actual_customer_id = cust_for_ticket["id"] if cust_for_ticket else user_id
+            
+            # Tạo thẻ Ticket mới ra màn hình Kanban
+            ticket_id, ticket_code = create_ticket(
+                customer_id=actual_customer_id or user_id,
+                customer_name=user_name,
+                customer_phone=phone,
+                customer_email=email,
+                channel="web",
+                subject="Khách hàng yêu cầu hỗ trợ trực tiếp",
+                priority="high",
+                first_message=question
+            )
+            session["chat_ticket_id"] = ticket_id
+            
+            return jsonify({
+                "success": True,
+                "answer": "Dạ, em đã ghi nhận yêu cầu. Hệ thống đang kết nối anh/chị với nhân viên CSKH. Anh/chị vui lòng giữ máy trong giây lát nhé!"
+            })
+            
+        # 3. Tiếp tục chạy logic RAG nếu không chuyển giao
         result = ask_rag(question)
         return jsonify({
             "success": True,
@@ -152,6 +220,29 @@ def api_chat():
     except Exception as e:
         print("LỖI CHATBOT:", e)
         return jsonify({"success": False, "message": "Không thể xử lý câu hỏi.", "error": str(e)}), 500
+
+@app.route("/api/chat/poll", methods=["GET"])
+def api_chat_poll():
+    chat_mode = session.get("chat_mode", "bot")
+    ticket_id = session.get("chat_ticket_id")
+    last_msg_id = request.args.get("last_msg_id", type=int, default=0)
+    
+    if chat_mode != "human" or not ticket_id:
+        return jsonify({"messages": []})
+        
+    from database.db import get_ticket_messages
+    messages = get_ticket_messages(ticket_id)
+    new_messages = []
+    
+    for msg in messages:
+        if msg["id"] > last_msg_id and msg["sender_type"] == "agent":
+            new_messages.append({
+                "id": msg["id"],
+                "text": msg["message"],
+                "sender_name": msg["sender_name"]
+            })
+            
+    return jsonify({"messages": new_messages})
 
 # =====================================================================
 # 2. XÁC THỰC VÀ TÀI KHOẢN (AUTH & RBAC)
@@ -225,6 +316,69 @@ def logout():
     flash("Đã đăng xuất an toàn.", "info")
     return redirect(url_for("login"))
 
+# =====================================================================
+# HỒ SƠ CÁ NHÂN (USER / CUSTOMER PROFILE)
+# =====================================================================
+@app.route("/profile", methods=["GET", "POST"])
+@login_required
+def user_profile():
+    user = get_user_by_id(session["user_id"])
+    if not user:
+        flash("Không tìm thấy thông tin tài khoản.", "danger")
+        return redirect(url_for("login"))
+        
+    customer = get_customer_by_user_id(user["id"])
+    if not customer:
+        customer = get_or_create_customer(
+            full_name=user.get("full_name") or user["username"],
+            phone=user.get("phone"),
+            email=user.get("email"),
+            user_id=user["id"]
+        )
+
+    if request.method == "POST":
+        new_name = request.form.get("full_name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        email = request.form.get("email", "").strip()
+        zalo_id = request.form.get("zalo_id", "").strip()
+        fb_id = request.form.get("fb_id", "").strip()
+        member_rank = request.form.get("member_rank", customer.get("member_rank", "Đồng (Mới)"))
+        notes = request.form.get("notes", customer.get("notes", "")).strip()
+
+        if not new_name:
+            flash("Họ và tên không được để trống.", "danger")
+            return redirect(url_for("user_profile"))
+
+        # 1. Cập nhật bảng users
+        update_user_profile(user["id"], full_name=new_name, phone=phone, email=email)
+
+        # 2. Cập nhật bảng customers
+        if customer:
+            update_customer_full(
+                customer["id"],
+                full_name=new_name,
+                phone=phone,
+                email=email,
+                zalo_id=zalo_id,
+                fb_id=fb_id,
+                member_rank=member_rank,
+                notes=notes
+            )
+
+        # 3. Cập nhật session ngay lập tức
+        session["full_name"] = new_name
+
+        log_audit(user["id"], user["username"], "UPDATE_PROFILE", "USER", user["id"], f"Đổi tên hồ sơ: {new_name}")
+        flash("Đã cập nhật thông tin hồ sơ và đổi tên thành công!", "success")
+        return redirect(url_for("user_profile"))
+
+    # Lấy lại customer mới nhất để hiển thị
+    customer = get_customer_by_id(customer["id"]) if customer else {}
+    tickets = get_tickets(customer_id=customer["id"]) if customer else []
+    warranties = get_warranties(customer_id=customer["id"]) if customer else []
+
+    return render_template("profile.html", user=user, customer=customer, tickets=tickets, warranties=warranties)
+
 # Google OpenID Connect (OIDC)
 @app.route("/auth/google/login")
 def google_login():
@@ -258,6 +412,16 @@ def google_callback():
 # =====================================================================
 # 3. DASHBOARD & VẬN HÀNH (AGENT & ADMIN)
 # =====================================================================
+
+@app.route("/api/agent/tickets/count")
+@login_required
+@role_required("agent", "admin")
+def api_agent_tickets_count():
+    from database.db import get_dashboard_stats
+    stats = get_dashboard_stats()
+    open_count = stats.get('ticket_status', {}).get('open', 0)
+    return jsonify({"open_tickets": open_count})
+
 @app.route("/dashboard")
 @login_required
 @role_required("agent", "admin")
@@ -319,10 +483,14 @@ def portal_ticket_chat(id):
         
     user = get_user_by_id(session["user_id"])
     # Quyền: Chỉ khách hàng sở hữu hoặc Agent/Admin
-    if user["role"] == "customer" and ticket["customer_id"] != user.get("customer_id") and ticket["customer_email"] != user["email"]:
-        # Kiểm tra customer id
+    if user["role"] == "customer":
         cust = get_customer_by_user_id(user["id"])
-        if cust and ticket["customer_id"] != cust["id"]:
+        # Kiểm tra theo customer_id hoặc email
+        customer_match = (
+            (cust and ticket["customer_id"] == cust["id"]) or
+            (ticket.get("customer_email") and ticket["customer_email"] == user.get("email"))
+        )
+        if not customer_match:
             flash("Bạn không có quyền truy cập ticket này.", "danger")
             return redirect(url_for("portal"))
 
@@ -342,8 +510,11 @@ def portal_ticket_chat(id):
 
     messages = get_ticket_messages(id)
     survey = get_ticket_survey(id)
-    return render_template("portal_ticket_chat.html" if os.path.exists("templates/portal_ticket_chat.html") else "ticket_detail.html",
+    return render_template("portal_ticket_chat.html",
                            ticket=ticket, messages=messages, customer=None, orders=[], agents=[], smart_replies=[], survey=survey)
+
+
+
 
 @app.route("/portal/survey/<int:ticket_id>", methods=["GET", "POST"])
 def portal_survey(ticket_id):
@@ -418,8 +589,12 @@ def ticket_create_agent():
 
 @app.route("/tickets/<int:id>")
 @login_required
-@role_required("agent", "admin")
 def ticket_detail(id):
+    if session.get("role") == "customer":
+        return redirect(f"/portal/ticket/{id}")
+    if session.get("role") not in ["agent", "admin"]:
+        flash("Bạn không có quyền truy cập khu vực này.", "danger")
+        return redirect(url_for("portal"))
     ticket = get_ticket_by_id(id)
     if not ticket:
         flash("Phiếu hỗ trợ không tồn tại.", "danger")
@@ -430,6 +605,9 @@ def ticket_detail(id):
     orders = get_orders_by_phone(ticket["customer_phone"]) if ticket.get("customer_phone") else []
     agents = get_all_agents()
     survey = get_ticket_survey(id)
+    warranties = get_warranties(customer_id=ticket.get("customer_id")) if ticket.get("customer_id") else []
+    past_tickets = get_tickets(customer_id=ticket.get("customer_id"), limit=10) if ticket.get("customer_id") else []
+    primary_device = warranties[0] if warranties else None
     
     # AI Smart Reply Suggestion
     last_customer_msg = ""
@@ -441,9 +619,55 @@ def ticket_detail(id):
     related_faqs = search_faqs(keyword=ticket["subject"])
     smart_replies = ai_service.suggest_smart_replies(last_customer_msg or ticket["subject"], related_faqs)
     
+    # 6-Stage Workflow: AI tự đề xuất bước tiếp theo
+    ai_next_action = ai_service.suggest_next_ticket_action(
+        current_status=ticket.get("status", "open"),
+        messages=[{"content": m.get("message", "")} for m in messages],
+        subject=ticket.get("subject", ""),
+        description=ticket.get("description", "")
+    )
+
+    # Chấm điểm AI: Sentiment, Mức độ khẩn cấp, Rủi ro khiếu nại (%), Khuyến nghị, Voucher
+    ai_risk_score = ai_service.assess_ticket_risk_and_scoring(
+        ticket_data=ticket,
+        messages=[{"content": m.get("message", "")} for m in messages]
+    )
+
     return render_template("ticket_detail.html",
                            ticket=ticket, messages=messages, customer=customer,
-                           orders=orders, agents=agents, survey=survey, smart_replies=smart_replies)
+                           orders=orders, agents=agents, survey=survey, smart_replies=smart_replies,
+                           warranties=warranties, past_tickets=past_tickets, primary_device=primary_device,
+                           ai_next_action=ai_next_action, ai_risk_score=ai_risk_score)
+
+@app.route("/api/tickets/<int:id>/next-action")
+@login_required
+@role_required("agent", "admin")
+def api_ticket_next_action(id):
+    ticket = get_ticket_by_id(id)
+    if not ticket:
+        return jsonify({"success": False, "message": "Ticket không tồn tại."}), 404
+    messages = get_ticket_messages(id)
+    res = ai_service.suggest_next_ticket_action(
+        current_status=ticket.get("status", "open"),
+        messages=[{"content": m.get("message", "")} for m in messages],
+        subject=ticket.get("subject", ""),
+        description=ticket.get("description", "")
+    )
+    return jsonify({"success": True, "data": res})
+
+@app.route("/api/tickets/<int:id>/risk-score")
+@login_required
+@role_required("agent", "admin")
+def api_ticket_risk_score(id):
+    ticket = get_ticket_by_id(id)
+    if not ticket:
+        return jsonify({"success": False, "message": "Ticket không tồn tại."}), 404
+    messages = get_ticket_messages(id)
+    res = ai_service.assess_ticket_risk_and_scoring(
+        ticket_data=ticket,
+        messages=[{"content": m.get("message", "")} for m in messages]
+    )
+    return jsonify({"success": True, "data": res})
 
 @app.route("/tickets/<int:id>/status", methods=["POST"])
 @login_required
@@ -459,7 +683,7 @@ def ticket_update_status(id):
             trigger_ticket_closure_survey(id)
             flash(f"Đã cập nhật trạng thái ticket và tự động gửi khảo sát CSAT/NPS cho khách hàng!", "success")
         else:
-            flash(f"Đã cập nhật trạng thái ticket thành công!", "success")
+            flash(f"Đã cập nhật trạng thái ticket sang '{new_status}' thành công!", "success")
             
     return redirect(f"/tickets/{id}")
 
@@ -549,21 +773,44 @@ def customer_360_detail(id):
                            sales_orders=sales_orders)
 
 @app.route("/api/customers/<int:id>/notes", methods=["POST"])
+@app.route("/api/customers/<int:id>/update", methods=["POST"])
 @login_required
 @role_required("agent", "admin")
 def customer_update_notes(id):
-    notes = request.form.get("notes", "")
-    member_rank = request.form.get("member_rank")
-    update_customer_notes(id, notes, member_rank)
-    log_audit(session.get("user_id"), session.get("username"), "UPDATE_CUSTOMER", "CUSTOMER", id, f"Cập nhật hạng: {member_rank}")
-    flash("Đã cập nhật ghi chú và hạng thành viên khách hàng!", "success")
+    customer = get_customer_by_id(id)
+    if not customer:
+        flash("Khách hàng không tồn tại.", "danger")
+        return redirect(url_for("customers_list"))
+        
+    full_name = request.form.get("full_name", customer["full_name"]).strip() or customer["full_name"]
+    phone = request.form.get("phone", customer.get("phone") or "").strip()
+    email = request.form.get("email", customer.get("email") or "").strip()
+    zalo_id = request.form.get("zalo_id", customer.get("zalo_id") or "").strip()
+    fb_id = request.form.get("fb_id", customer.get("fb_id") or "").strip()
+    member_rank = request.form.get("member_rank", customer.get("member_rank", "Đồng (Mới)"))
+    notes = request.form.get("notes", customer.get("notes") or "")
+
+    update_customer_full(id, full_name, phone=phone, email=email, zalo_id=zalo_id, fb_id=fb_id, member_rank=member_rank, notes=notes)
+    
+    if customer.get("user_id"):
+        update_user_profile(customer["user_id"], full_name, phone=phone, email=email)
+        if session.get("user_id") == customer["user_id"]:
+            session["full_name"] = full_name
+
+    log_audit(session.get("user_id"), session.get("username"), "UPDATE_CUSTOMER", "CUSTOMER", id, f"Cập nhật hồ sơ/đổi tên: {full_name}")
+    flash("Đã cập nhật thông tin và đổi tên khách hàng thành công!", "success")
     return redirect(f"/customers/{id}")
 
 @app.route("/api/customers/lookup-orders", methods=["POST"])
 @login_required
 @role_required("agent", "admin")
 def api_lookup_orders():
-    phone = request.form.get("phone") or request.json.get("phone") if request.is_json else None
+    # Lấy phone từ JSON body hoặc form data
+    if request.is_json:
+        phone = (request.get_json() or {}).get("phone")
+    else:
+        phone = request.form.get("phone")
+    
     if not phone:
         return jsonify({"success": False, "message": "Thiếu số điện thoại."}), 400
         
@@ -723,9 +970,10 @@ def api_webchat_post_message():
     if not message:
         return jsonify({"success": False, "message": "Nội dung trống."}), 400
         
+    import time as _time
     result = process_inbound_message(
         channel="webchat",
-        external_msg_id=f"WEB-{int(request.date.timestamp() if hasattr(request, 'date') and request.date else 1000)}",
+        external_msg_id=f"WEB-{int(_time.time() * 1000)}",
         sender_id=payload.get("customer_name"),
         sender_name=payload.get("customer_name"),
         content=message,
@@ -738,42 +986,193 @@ def api_webchat_post_message():
 # =====================================================================
 @app.route("/kanban")
 @login_required
-@role_required("agent", "admin")
+@role_required("agent", "admin", "sales")
 def kanban_view():
-    opps = get_sales_opportunities()
-    return render_template("kanban.html", opportunities=opps)
+    tickets = get_tickets(limit=200)
+    agents = get_all_agents()
+    return render_template("kanban.html", tickets=tickets, agents=agents)
 
-@app.route("/api/kanban/create", methods=["POST"])
+@app.route("/api/kanban/ticket-create", methods=["POST"])
 @login_required
 @role_required("agent", "admin")
-def api_kanban_create():
-    title = request.form.get("title")
-    cust_name = request.form.get("customer_name")
-    cust_phone = request.form.get("customer_phone")
-    value = float(request.form.get("value", 0))
-    stage = request.form.get("stage", "lead")
+def api_kanban_ticket_create():
+    subject = request.form.get("subject", "").strip()
+    cust_name = request.form.get("customer_name", "").strip()
+    cust_phone = request.form.get("customer_phone", "").strip()
+    channel = request.form.get("channel", "web")
+    priority = request.form.get("priority", "medium")
     
-    opp_id = create_sales_opportunity(
+    cust = get_or_create_customer(full_name=cust_name, phone=cust_phone)
+    ticket_id, ticket_code = create_ticket(
+        customer_id=cust["id"],
         customer_name=cust_name,
         customer_phone=cust_phone,
-        title=title,
-        value=value,
-        stage=stage,
-        assigned_agent_id=session.get("user_id")
+        customer_email=None,
+        channel=channel,
+        subject=subject,
+        priority=priority,
+        first_message=f"Tiếp nhận yêu cầu từ Bảng Kanban: {subject}"
     )
-    log_audit(session.get("user_id"), session.get("username"), "CREATE_OPPORTUNITY", "KANBAN", opp_id, f"Cơ hội: {title}, Giá trị: {value}")
-    flash("Đã thêm cơ hội bán hàng vào bảng Kanban!", "success")
+    assign_ticket(ticket_id, session.get("user_id"))
+    log_audit(session.get("user_id"), session.get("username"), "CREATE_TICKET", "KANBAN", ticket_id, f"Ticket #{ticket_code}: {subject}")
+    flash(f"Đã tiếp nhận Ticket hỗ trợ #{ticket_code} vào bảng Kanban thành công!", "success")
     return redirect(url_for("kanban_view"))
 
 @app.route("/api/kanban/<int:id>/stage", methods=["POST"])
 @login_required
 @role_required("agent", "admin")
 def api_kanban_stage(id):
-    data = request.get_json()
+    data = request.get_json() or {}
     new_stage = data.get("stage")
-    update_opportunity_stage(id, new_stage)
-    log_audit(session.get("user_id"), session.get("username"), "UPDATE_OPP_STAGE", "KANBAN", id, f"Giai đoạn: {new_stage}")
+    update_ticket_status(id, new_stage)
+    log_audit(session.get("user_id"), session.get("username"), "UPDATE_TICKET_STAGE", "KANBAN", id, f"Giai đoạn: {new_stage}")
     return jsonify({"success": True})
+
+@app.route("/api/kanban/<int:id>/delete", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_kanban_delete(id):
+    delete_ticket(id)
+    log_audit(session.get("user_id"), session.get("username"), "DELETE_TICKET", "KANBAN", id, f"Xoá ticket ID: {id}")
+    return jsonify({"success": True})
+
+@app.route("/devices")
+@login_required
+def devices_view():
+    keyword = request.args.get("keyword", "").strip()
+    warranties = get_warranties(keyword=keyword)
+    return render_template("devices.html", warranties=warranties, keyword=keyword)
+
+@app.route("/care-schedule")
+@login_required
+def care_schedule_alias():
+    return redirect(url_for("shifts_view"))
+
+@app.route("/reports")
+@login_required
+@role_required("agent", "admin")
+def reports_view():
+    stats = get_dashboard_stats()
+    surveys = get_all_surveys(limit=50)
+    agent_report = get_agent_performance_report()
+    return render_template("reports.html", stats=stats, surveys=surveys, agent_report=agent_report)
+
+# =====================================================================
+# 9.5. VOUCHER & RETENTION MANAGEMENT (QUẢN LÝ VOUCHER & GIỮ CHÂN KHÁCH)
+# =====================================================================
+@app.route("/vouchers")
+@login_required
+@role_required("agent", "admin")
+def vouchers_view():
+    catalog = get_all_vouchers()
+    customer_vouchers = get_customer_vouchers()
+    customers = get_all_customers()
+    return render_template("vouchers.html", catalog=catalog, customer_vouchers=customer_vouchers, customers=customers)
+
+@app.route("/api/vouchers/grant", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_voucher_grant():
+    data = request.get_json() if request.is_json else request.form
+    customer_id = int(data.get("customer_id", 0))
+    voucher_code = data.get("voucher_code", "").strip()
+    title = data.get("title", "").strip()
+    discount_type = data.get("discount_type", "fixed")
+    discount_value = float(data.get("discount_value", 0))
+    min_order_amount = float(data.get("min_order_amount", 0))
+    valid_days = int(data.get("valid_days", 30))
+    reason = data.get("reason", "").strip()
+    ticket_id = int(data.get("ticket_id", 0)) if data.get("ticket_id") else None
+
+    if not customer_id or not voucher_code:
+        return jsonify({"success": False, "message": "Thiếu mã voucher hoặc thông tin khách hàng."}), 400
+
+    import datetime
+    valid_until = (datetime.datetime.now() + datetime.timedelta(days=valid_days)).strftime("%Y-%m-%d %H:%M:%S")
+
+    cv_id = grant_customer_voucher(
+        customer_id=customer_id,
+        voucher_code=voucher_code,
+        title=title or f"Voucher ưu đãi {voucher_code}",
+        discount_type=discount_type,
+        discount_value=discount_value,
+        min_order_amount=min_order_amount,
+        valid_until=valid_until,
+        reason=reason,
+        ticket_id=ticket_id
+    )
+
+    # Tự động ghi nhận thông báo gửi tới khách hàng
+    cust = get_customer_by_id(customer_id)
+    if cust and cust.get("phone"):
+        create_notification(
+            customer_id=customer_id,
+            recipient=cust["phone"],
+            channel="zalo",
+            event_type="voucher_gift",
+            title=f"Quà tặng ưu đãi dịch vụ {voucher_code}",
+            content=f"CSKH Mobile xin gửi tặng Quý khách {cust.get('full_name')} mã voucher {voucher_code} giảm {discount_value:,.0f}đ. Hạn dùng đến {valid_until[:10]}."
+        )
+
+    log_audit(session.get("user_id"), session.get("username"), "GRANT_VOUCHER", "VOUCHER", cv_id, f"Cấp mã {voucher_code} cho khách #{customer_id}")
+
+    if request.is_json:
+        return jsonify({"success": True, "message": f"Đã cấp voucher {voucher_code} thành công!", "customer_voucher_id": cv_id})
+    flash(f"Đã cấp voucher {voucher_code} thành công cho khách hàng!", "success")
+    return redirect(url_for("vouchers_view"))
+
+@app.route("/api/vouchers/ai-suggest", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_voucher_ai_suggest():
+    data = request.get_json() or {}
+    cust_name = data.get("customer_name", "Quý khách")
+    incident_desc = data.get("incident_description", "")
+    sentiment = data.get("sentiment", "negative")
+    res = ai_service.suggest_ai_vouchers(cust_name, incident_desc, sentiment)
+    return jsonify({"success": True, "suggestion": res})
+
+# =====================================================================
+# 9.6. TRUNG TÂM THÔNG BÁO ĐA KÊNH (NOTIFICATIONS: ZALO, SMS, EMAIL, PUSH)
+# =====================================================================
+@app.route("/notifications")
+@login_required
+@role_required("agent", "admin")
+def notifications_view():
+    notifications = get_all_notifications()
+    customers = get_all_customers()
+    return render_template("notifications.html", notifications=notifications, customers=customers)
+
+@app.route("/api/notifications/send", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_notification_send():
+    data = request.get_json() if request.is_json else request.form
+    customer_id = int(data.get("customer_id", 0)) if data.get("customer_id") else None
+    recipient = data.get("recipient", "").strip()
+    channel = data.get("channel", "zalo")
+    event_type = data.get("event_type", "ticket_created")
+    title = data.get("title", "").strip()
+    content = data.get("content", "").strip()
+
+    if not recipient or not content:
+        return jsonify({"success": False, "message": "Thiếu người nhận hoặc nội dung thông báo."}), 400
+
+    notif_id = create_notification(
+        customer_id=customer_id,
+        recipient=recipient,
+        channel=channel,
+        event_type=event_type,
+        title=title or "Thông báo từ CSKH Mobile",
+        content=content
+    )
+    log_audit(session.get("user_id"), session.get("username"), "SEND_NOTIFICATION", "NOTIFICATION", notif_id, f"Gửi {channel} tới {recipient}")
+
+    if request.is_json:
+        return jsonify({"success": True, "message": f"Đã gửi thông báo thành công qua kênh {channel.upper()}!", "id": notif_id})
+    flash(f"Đã gửi thông báo thành công qua kênh {channel.upper()}!", "success")
+    return redirect(url_for("notifications_view"))
+
 
 @app.route("/shifts")
 @login_required
@@ -1223,7 +1622,7 @@ def sales_order_create_view():
 
         if prod["stock_quantity"] < qty:
             flash(f"Tồn kho không đủ! Hiện tại kho chỉ còn {prod['stock_quantity']} máy.", "warning")
-            return redirect(url_for("sales_orders_list"))
+            return redirect(url_for("sales_order_create_view"))
 
         unit_price = float(prod.get("promo_price") or prod["listed_price"])
         items = [{
@@ -1430,6 +1829,163 @@ def webhook_ghtk():
     payload = request.get_json() or {}
     data, code = handle_ghtk_webhook(request.headers, raw_body, payload)
     return jsonify(data), code
+
+# =====================================================================
+# 12. AI REQUIREMENT AGENT (PHÂN TÍCH YÊU CẦU BA TỪ THƯ MỤC AGENT)
+# =====================================================================
+@app.route("/agent", methods=["GET", "POST"])
+@login_required
+@role_required("agent", "admin")
+def requirement_agent():
+    result = None
+    user_requirement = ""
+    error = None
+    saved_filename = None
+    
+    if request.method == "POST":
+        user_requirement = request.form.get("requirement", "").strip()
+        if user_requirement:
+            try:
+                from services.requirement_agent_service import analyze_requirement
+                analysis_res = analyze_requirement(user_requirement)
+                result = analysis_res["content"]
+                saved_filename = analysis_res.get("saved_filename")
+                log_audit(session.get("user_id"), session.get("username"), "RUN_AGENT", "REQUIREMENT", None, "Phân tích yêu cầu bằng AI Agent")
+            except Exception as e:
+                error = str(e)
+        else:
+            error = "Vui lòng nhập nội dung yêu cầu."
+            
+    from services.requirement_agent_service import get_recent_specs
+    recent_specs = get_recent_specs()
+    return render_template("requirement_agent.html", result=result, user_requirement=user_requirement, error=error, saved_filename=saved_filename, recent_specs=recent_specs)
+
+@app.route("/agent/outputs/<filename>")
+@login_required
+@role_required("agent", "admin")
+def agent_download_output(filename):
+    from pathlib import Path
+    from flask import send_from_directory
+    outputs_dir = Path(__file__).resolve().parent.parent / "Agent" / "outputs"
+    return send_from_directory(outputs_dir, filename, as_attachment=True)
+
+# =====================================================================
+# 13. AI ASSISTANT HUB (SMART REPLY, RAG KNOWLEDGE SEARCH, SENTIMENT)
+# =====================================================================
+@app.route("/ai-assistant")
+@login_required
+@role_required("agent", "admin")
+def ai_assistant_view():
+    return render_template("ai_assistant.html")
+
+@app.route("/api/ai/smart-reply", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_ai_smart_reply():
+    data = request.get_json() or {}
+    message = data.get("message", "").strip()
+    cust_name = data.get("customer_name", "Quý khách")
+    device_model = data.get("device_model")
+    
+    if not message:
+        return jsonify({"success": False, "message": "Nội dung trống."}), 400
+        
+    replies = ai_service.generate_contextual_replies(message, customer_name=cust_name, device_model=device_model)
+    return jsonify({"success": True, "replies": replies})
+
+@app.route("/api/ai/rag-search", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_ai_rag_search():
+    data = request.get_json() or {}
+    query = data.get("query", "").strip()
+    
+    if not query:
+        return jsonify({"success": False, "message": "Câu truy vấn trống."}), 400
+        
+    import json
+    from services.rag_service import retrieve_faqs
+    faqs, _ = retrieve_faqs(query)
+    faqs = faqs[:4]
+    
+    prompt = f"""
+    Bạn là chuyên viên kỹ thuật cao cấp hỗ trợ sau bán hàng của chuỗi điện thoại CSKH Mobile.
+    Hãy tổng hợp câu trả lời hướng dẫn kỹ thuật chi tiết, ân cần và từng bước cho khách hàng dựa trên câu hỏi và các tài liệu sau.
+    
+    CÂU HỎI: {query}
+    TÀI LIỆU CẨM NANG:
+    {json.dumps([{'issue': f.get('issue_name'), 'solution': f.get('solution')} for f in faqs], ensure_ascii=False)}
+    
+    Yêu cầu: Viết theo cấu trúc:
+    1. Chẩn đoán nguyên nhân
+    2. Hướng dẫn khách tự kiểm tra / xử lý tại chỗ
+    3. Chính sách bảo hành áp dụng và khuyến nghị
+    """
+    try:
+        ai_answer = ai_service.generate_text(prompt)
+    except Exception:
+        if faqs:
+            ai_answer = f"Theo quy định kỹ thuật: {faqs[0].get('solution')}"
+        else:
+            ai_answer = "Dạ với sự cố này, trung tâm CSKH Mobile sẵn sàng tiếp nhận kiểm tra thẩm định miễn phí cho máy của mình ạ."
+            
+    return jsonify({"success": True, "faqs": faqs, "ai_answer": ai_answer})
+
+@app.route("/api/ai/sentiment-analysis", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_ai_sentiment():
+    data = request.get_json() or {}
+    text = data.get("text", "").strip()
+    
+    if not text:
+        return jsonify({"success": False, "message": "Nội dung trống."}), 400
+        
+    res = ai_service.analyze_sentiment(text)
+    return jsonify({"success": True, "result": res})
+
+# =====================================================================
+# 14. SETTINGS
+# =====================================================================
+CRM_SETTINGS = {
+    "brand_name": "CSKH/MOBILE Service Center",
+    "hotline": "0868643044",
+    "support_email": "support@cskhmobile.vn",
+    "address": "Số 123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP. Hồ Chí Minh",
+    "working_hours": "08:00 - 21:30 (Thứ 2 đến Chủ nhật, kể cả ngày lễ)",
+    "sla_first_response": 15,
+    "sla_resolution_hours": 24,
+    "auto_assign_method": "least_busy",
+    "auto_survey_enabled": 1,
+    "ai_provider": "gemini",
+    "ai_tone": "empathetic"
+}
+
+@app.route("/settings", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "agent")
+def settings_view():
+    global CRM_SETTINGS
+    if request.method == "POST":
+        CRM_SETTINGS["brand_name"] = request.form.get("brand_name", CRM_SETTINGS["brand_name"])
+        CRM_SETTINGS["hotline"] = request.form.get("hotline", CRM_SETTINGS["hotline"])
+        CRM_SETTINGS["support_email"] = request.form.get("support_email", CRM_SETTINGS["support_email"])
+        CRM_SETTINGS["address"] = request.form.get("address", CRM_SETTINGS["address"])
+        CRM_SETTINGS["working_hours"] = request.form.get("working_hours", CRM_SETTINGS["working_hours"])
+        try:
+            CRM_SETTINGS["sla_first_response"] = int(request.form.get("sla_first_response", 15))
+            CRM_SETTINGS["sla_resolution_hours"] = int(request.form.get("sla_resolution_hours", 24))
+        except Exception:
+            pass
+        CRM_SETTINGS["auto_assign_method"] = request.form.get("auto_assign_method", "least_busy")
+        CRM_SETTINGS["auto_survey_enabled"] = 1 if request.form.get("auto_survey_enabled") else 0
+        CRM_SETTINGS["ai_provider"] = request.form.get("ai_provider", "gemini")
+        CRM_SETTINGS["ai_tone"] = request.form.get("ai_tone", "empathetic")
+        log_audit(session.get("user_id"), session.get("username"), "UPDATE_SETTINGS", "SYSTEM", None, "Cập nhật cấu hình hệ thống")
+        flash("Đã lưu cài đặt hệ thống thành công!", "success")
+        return redirect(url_for("settings_view"))
+        
+    return render_template("settings.html", settings=CRM_SETTINGS)
 
 # =====================================================================
 # KHỞI CHẠY ỨNG DỤNG

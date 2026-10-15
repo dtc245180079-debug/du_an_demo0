@@ -3,7 +3,7 @@ import functools
 import requests
 from flask import session, redirect, url_for, flash, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from database.db import get_user_by_username, get_user_by_email, get_user_by_id, create_user, get_or_create_customer, log_audit
+from database.db import get_user_by_username, get_user_by_email, get_user_by_id, create_user, get_or_create_customer, get_customer_by_user_id, log_audit
 
 def hash_password(password):
     return generate_password_hash(password, method='pbkdf2:sha256')
@@ -23,11 +23,20 @@ def verify_password(stored_hash, password):
         return False
 
 def login_user(user):
+    # Đồng bộ thông tin từ hồ sơ khách hàng để đảm bảo tên và email luôn khớp 100%
+    cust = get_customer_by_user_id(user["id"])
+    full_name = (cust["full_name"] if cust and cust.get("full_name") else user.get("full_name")) or user["username"]
+    email = (cust["email"] if cust and cust.get("email") else user.get("email")) or f"{user['username']}@gmail.com"
+    phone = (cust["phone"] if cust and cust.get("phone") else user.get("phone"))
+
     session["user_id"] = user["id"]
     session["username"] = user["username"]
-    session["full_name"] = user["full_name"]
+    session["full_name"] = full_name
     session["role"] = user["role"]
-    session["email"] = user["email"]
+    session["email"] = email
+    session["phone"] = phone
+    if cust:
+        session["customer_id"] = cust["id"]
     
     # Ghi audit log
     log_audit(
@@ -83,7 +92,13 @@ def role_required(*allowed_roles):
                 return redirect(url_for("login", next=request.url))
                 
             current_role = session.get("role", "customer")
-            if current_role not in allowed_roles:
+            # Admin luôn có toàn quyền truy cập hệ thống
+            has_permission = (current_role == "admin") or (current_role in allowed_roles)
+            # Nếu route cho phép 'agent', các vai trò nội bộ 'manager' và 'technician' cũng được truy cập
+            if "agent" in allowed_roles and current_role in ["manager", "technician"]:
+                has_permission = True
+
+            if not has_permission:
                 if request.is_json or request.path.startswith("/api/"):
                     return jsonify({"success": False, "message": "Bạn không có quyền truy cập khu vực này."}), 403
                 flash("Bạn không có quyền truy cập khu vực này.", "danger")

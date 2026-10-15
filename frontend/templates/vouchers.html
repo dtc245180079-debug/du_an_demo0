@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block title %}Quản Lý Voucher & Giữ Chân Khách Hàng - CSKH Mobile{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 22px;">
+    <div>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 800; color: #1e293b;">
+            QUẢN LÝ VOUCHER & TRI ÂN GIỮ CHÂN KHÁCH HÀNG (AI RETENTION)
+        </h1>
+        <p style="color: var(--text-muted); margin: 6px 0 0 0; font-size: 14px;">
+            Quản trị danh mục voucher chăm sóc sau bán hàng, ví voucher của khách và công cụ AI tự động đề xuất voucher xoa dịu khiếu nại.
+        </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button class="btn btn-primary" onclick="openGrantModal()">
+            <i class="fa-solid fa-ticket me-1"></i> Cấp Voucher Mới
+        </button>
+    </div>
+</div>
+
+<!-- THỐNG KÊ TỔNG QUAN VOUCHER -->
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px;">
+    <div class="stat-card card" style="margin: 0; padding: 18px;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Danh Mục Voucher Hoạt Động</div>
+        <div style="font-size: 26px; font-weight: 800; color: #2563eb; margin: 6px 0 2px;">{{ catalog|length }}</div>
+        <div style="font-size: 12px; color: #10b981;">Đang áp dụng toàn hệ thống</div>
+    </div>
+    <div class="stat-card card" style="margin: 0; padding: 18px;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Tổng Voucher Đã Cấp Khách</div>
+        <div style="font-size: 26px; font-weight: 800; color: #0284c7; margin: 6px 0 2px;">{{ customer_vouchers|length }}</div>
+        <div style="font-size: 12px; color: #64748b;">Đã gửi qua Zalo / SMS</div>
+    </div>
+    <div class="stat-card card" style="margin: 0; padding: 18px;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Tỉ Lệ Kích Hoạt Giữ Chân</div>
+        <div style="font-size: 26px; font-weight: 800; color: #16a34a; margin: 6px 0 2px;">78.5%</div>
+        <div style="font-size: 12px; color: #16a34a;">+12.4% so với tháng trước</div>
+    </div>
+    <div class="stat-card card" style="margin: 0; padding: 18px;">
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Chi Phí Tri Ân Dự Kiến</div>
+        <div style="font-size: 26px; font-weight: 800; color: #e11d48; margin: 6px 0 2px;">15,850,000đ</div>
+        <div style="font-size: 12px; color: #64748b;">Ngân sách CSKH Q4/2026</div>
+    </div>
+</div>
+
+<!-- THANH TAB 3 CHỨC NĂNG CHÍNH -->
+<div class="card" style="margin-bottom: 22px; padding: 6px 14px; background: white; border-radius: 10px;">
+    <div style="display: flex; gap: 8px; border-bottom: none;">
+        <button type="button" class="tab-btn active" id="tab-btn-catalog" onclick="switchVoucherTab('catalog')">
+            1. Danh sách Voucher
+        </button>
+        <button type="button" class="tab-btn" id="tab-btn-customers" onclick="switchVoucherTab('customers')">
+            2. Voucher Khách Hàng
+        </button>
+        <button type="button" class="tab-btn" id="tab-btn-ai" onclick="switchVoucherTab('ai')">
+            3. Tự Động Gợi Ý Voucher AI
+        </button>
+    </div>
+</div>
+
+<style>
+    .tab-btn {
+        background: transparent;
+        border: none;
+        padding: 10px 18px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .tab-btn:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+    .tab-btn.active {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+    .voucher-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 18px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .voucher-card::before {
+        content: '';
+        position: absolute;
+        left: -12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        background: var(--bg-body, #f8fafc);
+        border-radius: 50%;
+        border: 1px solid #e2e8f0;
+    }
+    .voucher-card::after {
+        content: '';
+        position: absolute;
+        right: -12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        background: var(--bg-body, #f8fafc);
+        border-radius: 50%;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+
+<!-- TAB 1: DANH MỤC VOUCHER (CATALOG) -->
+<div id="tab-catalog" class="voucher-tab-content">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px;">
+        {% for v in catalog %}
+        <div class="voucher-card">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;">
+                        {{ v.code }}
+                    </span>
+                    <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 11px;">Hoạt động</span>
+                </div>
+                <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 4px 0 8px 0; line-height: 1.4;">
+                    {{ v.name }}
+                </h3>
+                <div style="font-size: 22px; font-weight: 900; color: #2563eb; margin-bottom: 8px;">
+                    {% if v.discount_type == 'percentage' %}
+                        Giảm {{ v.discount_value|int }}%
+                    {% elif v.discount_value > 0 %}
+                        {{ '{:,.0f}'.format(v.discount_value) }} đ
+                    {% else %}
+                        Miễn Phí 100%
+                    {% endif %}
+                </div>
+                <p style="font-size: 12px; color: #64748b; line-height: 1.5; margin: 0 0 12px 0;">
+                    {{ v.description or 'Áp dụng cho khách hàng phát sinh ticket hỗ trợ kỹ thuật hoặc bảo hành.' }}
+                </p>
+                <div style="font-size: 11px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+                    Đơn tối thiểu: <strong>{{ '{:,.0f}'.format(v.min_order_amount) if v.min_order_amount else '0' }} đ</strong>
+                </div>
+            </div>
+            <div style="margin-top: 14px;">
+                <button type="button" class="btn btn-sm btn-primary" style="width: 100%; justify-content: center;" onclick="quickGrant('{{ v.code }}', '{{ v.name }}', {{ v.discount_value }})">
+                    Cấp cho khách hàng
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- TAB 2: VOUCHER KHÁCH HÀNG (CUSTOMER VOUCHERS) -->
+<div id="tab-customers" class="voucher-tab-content" style="display: none;">
+    <div class="card" style="margin: 0; padding: 20px;">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <span style="font-size: 16px; font-weight: 700; color: #1e293b;">Lịch Sử Cấp Voucher Cho Khách Hàng</span>
+            <span class="badge" style="background: #f1f5f9; color: #475569;">{{ customer_vouchers|length }} lượt cấp</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: left;">
+                        <th style="padding: 10px 12px;">Khách hàng</th>
+                        <th style="padding: 10px 12px;">Số điện thoại</th>
+                        <th style="padding: 10px 12px;">Mã Voucher</th>
+                        <th style="padding: 10px 12px;">Ưu đãi</th>
+                        <th style="padding: 10px 12px;">Lý do cấp</th>
+                        <th style="padding: 10px 12px;">Hạn sử dụng</th>
+                        <th style="padding: 10px 12px;">Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cv in customer_vouchers %}
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px; font-weight: 700; color: #1e293b;">
+                            {{ cv.customer_name or 'Khách hàng #' ~ cv.customer_id }}
+                        </td>
+                        <td style="padding: 12px; color: #64748b;">
+                            {{ cv.customer_phone or '—' }}
+                        </td>
+                        <td style="padding: 12px;">
+                            <span class="badge" style="background: #eff6ff; color: #2563eb; font-weight: 700;">
+                                {{ cv.voucher_code }}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; font-weight: 700; color: #0284c7;">
+                            {% if cv.discount_type == 'percentage' %}
+                                {{ cv.discount_value|int }}%
+                            {% elif cv.discount_value > 0 %}
+                                {{ '{:,.0f}'.format(cv.discount_value) }} đ
+                            {% else %}
+                                100% Free
+                            {% endif %}
+                        </td>
+                        <td style="padding: 12px; color: #475569; max-width: 250px;">
+                            {{ cv.reason or 'Chăm sóc sau bán hàng' }}
+                        </td>
+                        <td style="padding: 12px; color: #64748b; font-size: 12px;">
+                            {{ cv.valid_until.strftime('%d/%m/%Y') if cv.valid_until and cv.valid_until.strftime is defined else cv.valid_until }}
+                        </td>
+                        <td style="padding: 12px;">
+                            {% if cv.status == 'active' %}
+                                <span class="badge" style="background: #dcfce7; color: #15803d;">Khả dụng</span>
+                            {% elif cv.status == 'used' %}
+                                <span class="badge" style="background: #f1f5f9; color: #64748b;">Đã sử dụng</span>
+                            {% else %}
+                                <span class="badge" style="background: #fee2e2; color: #b91c1c;">Hết hạn</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if customer_vouchers|length == 0 %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #94a3b8; padding: 30px;">
+                            Chưa có voucher nào được cấp cho khách hàng.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 3: TỰ ĐỘNG GỢI Ý VOUCHER AI -->
+<div id="tab-ai" class="voucher-tab-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start;">
+        <!-- Cột trái: Form phân tích AI -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 14px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                <span>AI Voucher Retention Engine</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 16px;">
+                Thuật toán phân tích ngữ cảnh sự cố, tâm lý bức xúc và đề xuất phương án voucher tối ưu nhất để ngăn chặn rủi ro khách hàng rời bỏ (Churn Risk).
+            </p>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-weight: 600; font-size: 13px;">Khách hàng mục tiêu:</label>
+                <select id="ai-customer-select" class="form-control">
+                    {% for c in customers %}
+                    <option value="{{ c.id }}" data-name="{{ c.full_name }}" data-phone="{{ c.phone }}">{{ c.full_name }} ({{ c.phone }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-weight: 600; font-size: 13px;">Mô tả sự cố / Mức độ bức xúc:</label>
+                <textarea id="ai-incident-desc" class="form-control" rows="4" placeholder="Ví dụ: Khách phàn nàn pin tụt nhanh, máy nóng, đã bảo hành lần 2..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="fillAiDesc('Khách phản ánh iPhone bị sọc màn hình sau 1 tháng mua, rất bức xúc muốn trả máy.')">Mẫu 1: Lỗi màn hình</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="fillAiDesc('Pin bị chai sập nguồn đột ngột, khách phải mang máy đi lại 2 lần.')">Mẫu 2: Lỗi pin nguồn</button>
+            </div>
+
+            <button type="button" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 700;" onclick="runAiVoucherSuggestion()">
+                AI Đề Xuất Voucher Phù Hợp
+            </button>
+        </div>
+
+        <!-- Cột phải: Kết quả AI đề xuất -->
+        <div class="card" style="margin: 0; padding: 24px; min-height: 400px;" id="ai-suggestion-box">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 350px; color: #94a3b8; text-align: center;">
+                <div style="width: 52px; height: 52px; border-radius: 14px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; color: #64748b;">
+                    <svg width="26" height="26" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>
+                </div>
+                <h4 style="color: #475569; margin: 0 0 6px 0;">Sẵn Sàng Đề Xuất Voucher</h4>
+                <p style="font-size: 13px; max-width: 400px;">Nhập tình trạng sự cố ở cột bên trái và nhấn nút để AI tính toán phương án ưu đãi giữ chân tối ưu.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CẤP VOUCHER THỦ CÔNG / NHANH -->
+<div id="modal-grant-voucher" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 520px; max-width: 90%; margin: 0; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+            <span style="font-size: 17px; font-weight: 800; color: #1e293b;">Cấp Voucher Cho Khách Hàng</span>
+            <span onclick="closeGrantModal()" style="cursor: pointer; font-size: 18px; font-weight: 600; color: var(--text-muted);">&times;</span>
+        </div>
+        <form method="POST" action="/api/vouchers/grant">
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-weight: 600; font-size: 13px;">Chọn khách hàng:</label>
+                <select name="customer_id" id="modal-customer-id" class="form-control" required>
+                    {% for c in customers %}
+                    <option value="{{ c.id }}">{{ c.full_name }} ({{ c.phone }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-weight: 600; font-size: 13px;">Mã Voucher:</label>
+                <input type="text" name="voucher_code" id="modal-voucher-code" class="form-control" required placeholder="VD: CARE_RETENTION_50K">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; font-size: 13px;">Mức giảm (VNĐ):</label>
+                    <input type="number" name="discount_value" id="modal-discount-value" class="form-control" value="50000" required>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 600; font-size: 13px;">Hạn dùng (ngày):</label>
+                    <input type="number" name="valid_days" class="form-control" value="30" required>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="font-weight: 600; font-size: 13px;">Lý do cấp voucher:</label>
+                <input type="text" name="reason" id="modal-reason" class="form-control" placeholder="VD: Tri ân khách hàng / Xoa dịu sự cố kỹ thuật">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="closeGrantModal()">Hủy</button>
+                <button type="submit" class="btn btn-primary" style="font-weight: 700;">Xác Nhận & Gửi Tặng</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function switchVoucherTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.voucher-tab-content').forEach(c => c.style.display = 'none');
+
+        const btn = document.getElementById('tab-btn-' + tabName);
+        const content = document.getElementById('tab-' + tabName);
+        if (btn) btn.classList.add('active');
+        if (content) content.style.display = 'block';
+    }
+
+    function openGrantModal() {
+        document.getElementById('modal-grant-voucher').style.display = 'flex';
+    }
+
+    function closeGrantModal() {
+        document.getElementById('modal-grant-voucher').style.display = 'none';
+    }
+
+    function quickGrant(code, name, value) {
+        document.getElementById('modal-voucher-code').value = code;
+        document.getElementById('modal-discount-value').value = value;
+        document.getElementById('modal-reason').value = 'Tri ân theo chương trình: ' + name;
+        openGrantModal();
+    }
+
+    function fillAiDesc(text) {
+        document.getElementById('ai-incident-desc').value = text;
+    }
+
+    async function runAiVoucherSuggestion() {
+        const custSelect = document.getElementById('ai-customer-select');
+        const custId = custSelect.value;
+        const custName = custSelect.options[custSelect.selectedIndex].getAttribute('data-name');
+        const desc = document.getElementById('ai-incident-desc').value;
+
+        if (!desc.trim()) {
+            alert('Vui lòng nhập mô tả sự cố hoặc mức độ bức xúc của khách hàng.');
+            return;
+        }
+
+        const box = document.getElementById('ai-suggestion-box');
+        box.innerHTML = `<div style="text-align: center; padding: 60px; color: #2563eb;">
+            <div style="font-weight: 700; font-size: 15px; margin-bottom: 8px;">AI đang phân tích tâm lý khách hàng & tính toán tỷ lệ giữ chân...</div>
+            <div style="font-size: 13px; color: #64748b;">Đang đối soát kho voucher tối ưu...</div>
+        </div>`;
+
+        try {
+            const res = await fetch('/api/vouchers/ai-suggest', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    customer_name: custName,
+                    incident_description: desc
+                })
+            });
+            const data = await res.json();
+            if (data.success && data.suggestion) {
+                const s = data.suggestion;
+                box.innerHTML = `
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 18px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span class="badge" style="background: #22c55e; color: white; font-weight: 800; font-size: 13px; padding: 4px 10px;">
+                                ĐỀ XUẤT TỐI ƯU CỦA AI
+                            </span>
+                            <span style="font-size: 13px; font-weight: 800; color: #15803d;">
+                                ${s.ai_retention_lift || '+45% Retention Lift'}
+                            </span>
+                        </div>
+                        <h3 style="font-size: 18px; font-weight: 800; color: #166534; margin: 4px 0 8px;">
+                            ${s.voucher_name}
+                        </h3>
+                        <div style="font-size: 24px; font-weight: 900; color: #15803d; margin-bottom: 10px;">
+                            Mã: <span style="font-family: monospace; background: white; padding: 2px 8px; border-radius: 6px; border: 1px dashed #86efac;">${s.voucher_code}</span>
+                            ${s.discount_value > 0 ? '· ' + s.discount_value.toLocaleString('vi-VN') + ' đ' : ''}
+                        </div>
+                        <p style="font-size: 13px; color: #374151; line-height: 1.5; margin: 0;">
+                            <strong>Lý do AI lựa chọn:</strong> ${s.reason}
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn btn-primary" style="flex: 1; justify-content: center; font-weight: 700; padding: 12px;" onclick="applyAiVoucher('${custId}', '${s.voucher_code}', '${s.voucher_name}', ${s.discount_value}, '${s.reason}')">
+                            Cấp Voucher Này Ngay Cho Khách Hàng
+                        </button>
+                    </div>
+                `;
+            } else {
+                box.innerHTML = `<div class="alert alert-danger">Không thể sinh đề xuất AI. Vui lòng thử lại.</div>`;
+            }
+        } catch (e) {
+            box.innerHTML = `<div class="alert alert-danger">Lỗi kết nối máy chủ.</div>`;
+        }
+    }
+
+    async function applyAiVoucher(custId, code, name, value, reason) {
+        try {
+            const res = await fetch('/api/vouchers/grant', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    customer_id: custId,
+                    voucher_code: code,
+                    title: name,
+                    discount_value: value,
+                    reason: reason,
+                    valid_days: 30
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Đã cấp voucher ' + code + ' thành công cho khách hàng và kích hoạt tin nhắn gửi thông báo!');
+                location.reload();
+            } else {
+                alert('Lỗi: ' + (data.message || 'Không thể cấp voucher.'));
+            }
+        } catch (e) {
+            alert('Lỗi kết nối máy chủ.');
+        }
+    }
+</script>
+{% endblock %}

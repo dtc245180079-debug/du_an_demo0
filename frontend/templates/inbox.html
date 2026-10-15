@@ -81,7 +81,7 @@
         <div class="feed-messages" id="inbox-feed-messages" style="flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;">
             {% if messages %}
                 {% for msg in messages %}
-                <div class="feed-msg {% if msg.direction == 'outbound' %}msg-agent{% else %}msg-customer{% endif %}">
+                <div class="feed-msg {% if msg.direction == 'outbound' %}bubble-outgoing{% else %}bubble-incoming{% endif %}">
                     <div class="msg-meta">
                         <strong>{{ msg.sender_name }}</strong>
                         <span>{{ msg.created_at.strftime("%H:%M %d/%m") if msg.created_at else '' }}</span>
@@ -230,7 +230,7 @@
                 // Thêm tin nhắn vào feed
                 const feed = document.getElementById("inbox-feed-messages");
                 const msgDiv = document.createElement("div");
-                msgDiv.className = "feed-msg msg-agent";
+                msgDiv.className = "feed-msg bubble-outgoing";
                 msgDiv.innerHTML = `
                     <div class="msg-meta">
                         <strong>{{ session.get('full_name') }}</strong>
@@ -276,7 +276,7 @@
                 // Thêm thẻ sản phẩm vào feed
                 const feed = document.getElementById("inbox-feed-messages");
                 const msgDiv = document.createElement("div");
-                msgDiv.className = "feed-msg msg-agent";
+                msgDiv.className = "feed-msg bubble-outgoing";
                 msgDiv.innerHTML = `
                     <div class="msg-meta">
                         <strong>{{ session.get('full_name') }}</strong>

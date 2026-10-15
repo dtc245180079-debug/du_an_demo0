@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base_auth.html" %}
 
 {% block title %}Đăng nhập - Hệ thống CRM Care AI{% endblock %}
 
@@ -50,13 +50,13 @@
                 <span style="font-size: 11px; background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 999px; font-weight: 500;">Bấm là vào ngay</span>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                <button type="button" onclick="quickLogin('admin', 'admin123')" class="btn" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                <button type="button" onclick="quickLogin('admin', '12345678')" class="btn" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
                     Admin
                 </button>
-                <button type="button" onclick="quickLogin('nhanvien', 'agent123')" class="btn" style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                <button type="button" onclick="quickLogin('nhanvien', '12345678')" class="btn" style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
                     CSKH
                 </button>
-                <button type="button" onclick="quickLogin('khachhang', 'customer123')" class="btn" style="background: #faf5ff; border: 1px solid #e9d5ff; color: #7e22ce; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                <button type="button" onclick="quickLogin('khachhang', '12345678')" class="btn" style="background: #faf5ff; border: 1px solid #e9d5ff; color: #7e22ce; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
                     Khách hàng
                 </button>
             </div>

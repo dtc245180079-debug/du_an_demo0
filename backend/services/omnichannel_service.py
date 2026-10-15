@@ -75,10 +75,11 @@ def process_inbound_message(channel, external_msg_id, sender_id, sender_name, co
     fb_id = sender_id if channel == "facebook" else None
     ig_id = sender_id if channel == "instagram" else None
     
-    if channel == "email" and "@" in sender_id:
+    # Chỉ xác định phone nếu không phải kênh dùng numeric ID (Zalo/FB/Instagram)
+    if channel == "email" and "@" in str(sender_id or ""):
         email = sender_id
-    elif sender_id and sender_id.isdigit() and len(sender_id) >= 10:
-        phone = sender_id
+    elif channel not in ("zalo", "facebook", "instagram") and sender_id and str(sender_id).isdigit() and len(str(sender_id)) >= 10:
+        phone = str(sender_id)
 
     customer = get_or_create_customer(
         full_name=sender_name or f"Khách hàng {channel.capitalize()}",

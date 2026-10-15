@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Hồ sơ cá nhân & Thông tin tài khoản - CSKH Mobile{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 800; color: #1e293b;">
+            HỒ SƠ CÁ NHÂN & THÔNG TIN TÀI KHOẢN
+        </h1>
+        <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 14px;">
+            Quản lý thông tin định danh cá nhân, đổi tên hiển thị và tra cứu quyền lợi thành viên
+        </p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start;">
+    <!-- CỘT TRÁI: THẺ HỒ SƠ KHÁCH HÀNG (THEO ĐÚNG HÌNH ẢNH MẪU YÊU CẦU) -->
+    <div>
+        <div class="card" style="margin: 0; padding: 24px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+            <!-- Header Avatar + Tên + Mã KH -->
+            <div class="c360-header" style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                <div class="c360-avatar" style="width: 56px; height: 56px; background: #eff6ff; color: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700;">
+                    {{ (customer.full_name or user.full_name or session.get('full_name') or 'K')[:1]|upper }}
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: #1e293b;" id="display-profile-name">
+                        {{ customer.full_name or user.full_name or session.get('full_name') }}
+                    </h2>
+                    <small style="color: var(--text-muted); font-size: 13px;">Mã KH: #{{ customer.id or user.id }}</small>
+                </div>
+            </div>
+
+            <!-- Form cập nhật thông tin & đổi tên -->
+            <form method="POST" action="/profile">
+                <!-- 1. ĐỔI HỌ VÀ TÊN -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 6px; display: block;">
+                        Họ và tên (Đổi tên tài khoản):
+                    </label>
+                    <input type="text" name="full_name" class="form-control" 
+                           value="{{ customer.full_name or user.full_name or session.get('full_name') }}" 
+                           required placeholder="Nhập họ và tên mới..."
+                           style="font-size: 14px; font-weight: 600; border: 1px solid #3b82f6; background: #f8fafc;">
+                </div>
+
+                <!-- 2. SỐ ĐIỆN THOẠI -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">
+                        Số điện thoại:
+                    </label>
+                    <input type="text" name="phone" class="form-control" 
+                           value="{{ customer.phone or user.phone or '' }}" 
+                           placeholder="0987654321" style="font-size: 13px;">
+                </div>
+
+                <!-- 3. EMAIL -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">
+                        Email:
+                    </label>
+                    <input type="email" name="email" class="form-control" 
+                           value="{{ customer.email or user.email or '' }}" 
+                           placeholder="hung.le@gmail.com" style="font-size: 13px;">
+                </div>
+
+                <!-- 4. ZALO OA ID -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">
+                        Zalo OA ID:
+                    </label>
+                    <input type="text" name="zalo_id" class="form-control" 
+                           value="{{ customer.zalo_id or '' }}" 
+                           placeholder="zalo_hung99" style="font-size: 13px;">
+                </div>
+
+                <!-- 5. FACEBOOK ID -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">
+                        Facebook ID:
+                    </label>
+                    <input type="text" name="fb_id" class="form-control" 
+                           value="{{ customer.fb_id or '' }}" 
+                           placeholder="fb_hungvip" style="font-size: 13px;">
+                </div>
+
+                <!-- 6. NGÀY THAM GIA (TĨNH NHƯ HÌNH) -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px dashed var(--border-color); border-bottom: 1px dashed var(--border-color); font-size: 13px; margin-bottom: 16px;">
+                    <span style="color: var(--text-muted); font-weight: 500;">Ngày tham gia:</span>
+                    <span style="font-weight: 600; color: var(--text-main);">
+                        {{ customer.created_at.strftime("%d/%m/%Y") if customer.created_at else (user.created_at.strftime("%d/%m/%Y") if user.created_at else '02/10/2026') }}
+                    </span>
+                </div>
+
+                <!-- 7. HẠNG THÀNH VIÊN -->
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">
+                        Hạng thành viên:
+                    </label>
+                    <select name="member_rank" class="form-control" style="font-size: 13px; font-weight: 600;">
+                        {% set current_rank = customer.member_rank or 'Đồng (Mới)' %}
+                        <option value="Đồng (Mới)" {% if current_rank == 'Đồng (Mới)' %}selected{% endif %}>Đồng (Mới)</option>
+                        <option value="Bạc" {% if current_rank == 'Bạc' %}selected{% endif %}>Bạc</option>
+                        <option value="Vàng (VIP)" {% if current_rank in ['Vàng', 'Vàng (VIP)', 'VIP'] %}selected{% endif %}>Vàng (VIP)</option>
+                        <option value="Kim Cương (VVIP)" {% if current_rank == 'Kim Cương (VVIP)' %}selected{% endif %}>Kim Cương (VVIP)</option>
+                    </select>
+                </div>
+
+                <!-- 8. GHI CHÚ NỘI BỘ CSKH -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">
+                        Ghi chú nội bộ CSKH:
+                    </label>
+                    <textarea name="notes" rows="4" class="form-control" 
+                              placeholder="Ghi chú sở thích, thói quen mua hàng hoặc lưu ý khi phục vụ..." 
+                              style="font-size: 13px; line-height: 1.5;">{{ customer.notes or '' }}</textarea>
+                </div>
+
+                <!-- NÚT CẬP NHẬT GHI CHÚ / ĐỔI TÊN (MÀU XANH DƯƠNG CHUẨN MẪU) -->
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; font-size: 14px;">
+                    Cập nhật ghi chú & Đổi tên
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: THÔNG TIN TÀI KHOẢN VÀ LỊCH SỬ DỊCH VỤ -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Card 1: Thông tin tài khoản hệ thống -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 16px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                THÔNG TIN XÁC THỰC TÀI KHOẢN
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px;">
+                <div style="background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <span style="color: var(--text-muted); display: block; font-size: 12px; margin-bottom: 4px;">Tên đăng nhập hệ thống:</span>
+                    <strong style="color: #1e293b; font-size: 14px;">{{ user.username }}</strong>
+                </div>
+                <div style="background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <span style="color: var(--text-muted); display: block; font-size: 12px; margin-bottom: 4px;">Vai trò tài khoản:</span>
+                    <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700; text-transform: uppercase;">
+                        {{ user.role }}
+                    </span>
+                </div>
+                <div style="background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <span style="color: var(--text-muted); display: block; font-size: 12px; margin-bottom: 4px;">Trạng thái:</span>
+                    <span style="color: #16a34a; font-weight: 600;">Đang hoạt động</span>
+                </div>
+                <div style="background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <span style="color: var(--text-muted); display: block; font-size: 12px; margin-bottom: 4px;">Email liên hệ:</span>
+                    <strong style="color: #1e293b;">{{ user.email }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Danh sách Phiếu hỗ trợ gần đây -->
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span style="font-size: 15px; font-weight: 700; color: #1e293b;">
+                    LỊCH SỬ PHIẾU HỖ TRỢ KỸ THUẬT ({{ tickets|length }})
+                </span>
+                <a href="/portal/new-ticket" class="btn btn-sm btn-secondary">Tạo ticket mới</a>
+            </div>
+
+            {% if tickets %}
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã Ticket</th>
+                            <th>Tiêu đề vấn đề</th>
+                            <th>Ngày gửi</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in tickets[:5] %}
+                        <tr>
+                            <td><strong>#{{ t.ticket_code }}</strong></td>
+                            <td>{{ t.subject }}</td>
+                            <td>{{ t.created_at.strftime("%d/%m/%Y") if t.created_at else '' }}</td>
+                            <td>
+                                <span class="badge status-{{ t.status }}">
+                                    {% if t.status == 'open' %}Mới tiếp nhận
+                                    {% elif t.status == 'in_progress' %}Đang xử lý
+                                    {% elif t.status == 'resolved' %}Đã giải quyết
+                                    {% elif t.status == 'closed' %}Đã đóng
+                                    {% else %}{{ t.status }}
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/portal/ticket/{{ t.id }}" class="btn btn-sm btn-secondary">Xem trao đổi</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px;">
+                Chưa có yêu cầu hỗ trợ nào. Khi bạn gửi phiếu tại Cổng hỗ trợ, tiến độ sẽ hiển thị ở đây.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Card 3: Sổ bảo hành thiết bị di động -->
+        {% if warranties %}
+        <div class="card" style="margin: 0; padding: 22px;">
+            <div class="card-title" style="margin-bottom: 16px; font-size: 15px; font-weight: 700; color: #1e293b;">
+                SỔ BẢO HÀNH THIẾT BỊ DI ĐỘNG ({{ warranties|length }})
+            </div>
+            <div class="table-responsive" style="border: none; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã BH</th>
+                            <th>Số IMEI</th>
+                            <th>Sản phẩm</th>
+                            <th>Hạn bảo hành</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for w in warranties %}
+                        <tr>
+                            <td><strong>{{ w.warranty_code }}</strong></td>
+                            <td><code>{{ w.imei }}</code></td>
+                            <td>{{ w.product_name or 'Điện thoại di động' }}</td>
+                            <td>{{ w.end_date.strftime("%d/%m/%Y") if w.end_date else '' }}</td>
+                            <td>
+                                <span class="badge" style="background: #ecfdf5; color: #059669; font-weight: bold;">
+                                    {{ w.status|capitalize }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

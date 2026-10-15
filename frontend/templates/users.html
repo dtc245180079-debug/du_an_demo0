@@ -36,7 +36,7 @@
                 <td>{{ u.email }}</td>
                 <td>{{ u.phone or '—' }}</td>
                 <td>
-                    <span class="role-pill role-{{ u.role }}">{{ u.role }}</span>
+                    <span class="role-pill role-{{ u.role }}" style="font-weight: 600; text-transform: uppercase;">{{ u.role }}</span>
                 </td>
                 <td>
                     {% if u.is_active %}
@@ -48,9 +48,11 @@
                 <td style="text-align: center;">
                     <form method="POST" action="/api/users/{{ u.id }}/role" style="display: flex; gap: 6px; justify-content: center;">
                         <select name="role" style="font-size: 12px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px;">
-                            <option value="customer" {% if u.role == 'customer' %}selected{% endif %}>Customer</option>
-                            <option value="agent" {% if u.role == 'agent' %}selected{% endif %}>Agent</option>
-                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin (Quản trị viên)</option>
+                            <option value="manager" {% if u.role == 'manager' %}selected{% endif %}>Manager (Quản lý CSKH)</option>
+                            <option value="agent" {% if u.role == 'agent' %}selected{% endif %}>Agent (Nhân viên CSKH)</option>
+                            <option value="technician" {% if u.role == 'technician' %}selected{% endif %}>Technician (Kỹ thuật viên)</option>
+                            <option value="customer" {% if u.role == 'customer' %}selected{% endif %}>Customer (Khách hàng)</option>
                         </select>
                         <select name="is_active" style="font-size: 12px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px;">
                             <option value="1" {% if u.is_active == 1 %}selected{% endif %}>Mở</option>
