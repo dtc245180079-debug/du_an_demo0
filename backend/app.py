@@ -52,7 +52,7 @@ from database.init_db import init_database
 
 # Service imports
 from services.rag_service import ask_rag
-from services.ai_service import ai_service
+from services.ai_service import ai_service, sanitize_pii_for_ai
 from services.sales_service import sales_service
 from services.auth_service import (
     hash_password, verify_password, login_user, logout_user, login_required, role_required,
@@ -1943,6 +1943,46 @@ def api_ai_sentiment():
         
     res = ai_service.analyze_sentiment(text)
     return jsonify({"success": True, "result": res})
+
+# [TIÊU CHÍ 3.2 - SO SÁNH PROMPT TRÊN WEB]
+@app.route("/api/ai/compare-prompts", methods=["POST"])
+@login_required
+@role_required("agent", "admin")
+def api_ai_compare_prompts():
+    data = request.get_json() or {}
+    question = data.get("question", "").strip()
+    context = data.get("context", "").strip() or None
+    
+    if not question:
+        return jsonify({"success": False, "message": "Câu hỏi không được để trống."}), 400
+        
+    try:
+        comparison_data = ai_service.compare_prompts(question, context=context)
+        return jsonify({"success": True, "data": comparison_data})
+    except Exception as e:
+        print("[AI PROMPT COMPARE ERROR]:", e)
+        return jsonify({"success": False, "message": f"Lỗi so sánh Prompt: {str(e)}"}), 500
+
+# [TIÊU CHÍ 2.3 - AI PHỤC VỤ NGHIỆP VỤ CRM]
+@app.route("/api/customers/<int:id>/ai-insight", methods=["GET", "POST"])
+@login_required
+@role_required("agent", "admin")
+def api_customer_ai_insight(id):
+    customer = get_customer_by_id(id)
+    if not customer:
+        return jsonify({"success": False, "message": "Khách hàng không tồn tại."}), 404
+        
+    tickets = get_tickets(customer_id=id)
+    orders = get_orders_by_phone(customer["phone"]) if customer.get("phone") else []
+    surveys = get_customer_surveys(id)
+    warranties = get_warranties(customer_id=id)
+    
+    try:
+        insight = ai_service.generate_customer_insight(customer, orders=orders, tickets=tickets, surveys=surveys, warranties=warranties)
+        return jsonify({"success": True, "insight": insight})
+    except Exception as e:
+        print("[AI CUSTOMER INSIGHT ERROR]:", e)
+        return jsonify({"success": False, "message": f"Lỗi phân tích chân dung: {str(e)}"}), 500
 
 # =====================================================================
 # 14. SETTINGS

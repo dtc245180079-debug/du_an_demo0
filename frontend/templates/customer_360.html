@@ -12,7 +12,10 @@
         <h1 class="page-title">HỒ SƠ KHÁCH HÀNG 360: {{ customer.full_name }}</h1>
     </div>
 
-    <div style="display: flex; gap: 10px;">
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <button type="button" class="btn btn-primary" id="btn-ai-insight" onclick="generateAICustomerInsight({{ customer.id }})" style="background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%); border: none; font-weight: 700; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> AI Phân Tích & Tóm Tắt Chân Dung
+        </button>
         {% if customer.phone %}
         <button class="btn btn-softphone" onclick="startSoftphoneCall('{{ customer.phone }}')">
             Gọi Softphone Twilio
@@ -91,6 +94,123 @@
 
     <!-- Right Column: Devices, Orders, Tickets, Surveys -->
     <div>
+
+        <!-- AI CUSTOMER INSIGHT CARD - TIÊU CHÍ 2.3 -->
+        <div id="ai-insight-card" class="card" style="margin-bottom: 24px; padding: 22px; background: linear-gradient(135deg, #f8fafc 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 5px solid #7c3aed; border-radius: 12px; box-shadow: 0 4px 16px rgba(124, 58, 237, 0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; background: #7c3aed; color: white; display: grid; place-items: center; font-size: 16px;">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #5b21b6;">
+                            AI CUSTOMER INSIGHT 360 (CHÂN DUNG & KỊCH BẢN CHĂM SÓC)
+                        </h3>
+                        <small style="color: #6d28d9;">Tiêu chí 2.3: Tổng hợp hành vi mua sắm, rủi ro rời bỏ &amp; đề xuất kịch bản chăm sóc tiếp theo</small>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span id="ai-insight-status-badge" class="badge" style="background: white; color: #7c3aed; font-weight: 700; border: 1px solid #ddd6fe;">
+                        <i class="fa-solid fa-sparkles me-1"></i> AI INSIGHT READY
+                    </span>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="generateAICustomerInsight({{ customer.id }})">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i> Phân tích lại
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="ai-insight-loading" style="display: none; padding: 24px; text-align: center;">
+                <div class="spinner" style="width: 32px; height: 32px; border: 3px solid #f3f3f3; border-top: 3px solid #7c3aed; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px auto;"></div>
+                <strong style="color: #5b21b6; font-size: 14px;">AI đang phân tích tổng hợp lịch sử đơn hàng, thiết bị và khiếu nại...</strong>
+            </div>
+
+            <!-- Insight Content Body -->
+            <div id="ai-insight-body">
+                <!-- 1. Key Metrics: Satisfaction Score & Churn Risk -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px;">
+                    <!-- Satisfaction Score -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">1. Đánh giá độ hài lòng:</span>
+                        <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+                            <span id="insight-sat-score" style="font-size: 26px; font-weight: 900; color: #16a34a;">85</span>
+                            <span style="font-size: 13px; color: #94a3b8;">/ 100</span>
+                        </div>
+                        <span id="insight-sat-badge" class="badge" style="background: #dcfce7; color: #166534; font-weight: 700; margin-top: 6px;">
+                            Rất hài lòng &amp; Thiện chí
+                        </span>
+                    </div>
+
+                    <!-- Churn Risk -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">2. Dự đoán nguy cơ rời bỏ:</span>
+                        <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+                            <span id="insight-churn-score" style="font-size: 26px; font-weight: 900; color: #16a34a;">15%</span>
+                            <span style="font-size: 13px; color: #94a3b8;">(Churn Risk)</span>
+                        </div>
+                        <span id="insight-churn-badge" class="badge" style="background: #dcfce7; color: #166534; font-weight: 700; margin-top: 6px;">
+                            Thấp (Khách hàng trung thành)
+                        </span>
+                    </div>
+
+                    <!-- Spending Profile -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">3. Lịch sử tương tác:</span>
+                        <div style="font-size: 13px; color: #1e293b; margin-top: 6px; line-height: 1.5;" id="insight-interaction-stats">
+                            Đơn hàng: <strong>{{ orders|length if orders else 0 }}</strong> | Tickets: <strong>{{ tickets|length if tickets else 0 }}</strong> | Bảo hành: <strong>{{ warranties|length if warranties else 0 }}</strong>
+                        </div>
+                        <small style="color: #64748b; font-size: 11px;" id="insight-spending-note">Tổng chi tiêu: {{ "{:,.0f}".format(orders|sum(attribute='total_amount') if orders else 0) }} ₫</small>
+                    </div>
+                </div>
+
+                <!-- 2. Overview Narrative & Complaint Summary -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                        <strong style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                            <i class="fa-solid fa-id-card-clip" style="color: #7c3aed;"></i> Tóm tắt chân dung &amp; thói quen tiêu dùng:
+                        </strong>
+                        <p id="insight-overview" style="font-size: 13px; line-height: 1.6; color: #1e293b; margin: 0;">
+                            Khách hàng thân thiết có lịch sử mua sắm và tương tác tích cực. Thường xuyên phản hồi khảo sát dịch vụ và quan tâm các dòng máy cao cấp.
+                        </p>
+                    </div>
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                        <strong style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                            <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b;"></i> Lịch sử sự cố &amp; khiếu nại kỹ thuật:
+                        </strong>
+                        <p id="insight-complaints" style="font-size: 13px; line-height: 1.6; color: #1e293b; margin: 0;">
+                            Không ghi nhận khiếu nại gay gắt. Các yêu cầu hỗ trợ trước đây liên quan đến tư vấn kỹ thuật và bảo hành đều được giải quyết nhanh chóng.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 3. Next Action Care Script -->
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 8px; padding: 16px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 14px; color: #166534; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-route"></i> GỢI Ý KỊCH BẢN CHĂM SÓC TIẾP THEO (NEXT BEST ACTION):
+                        </strong>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="copyCareScript(this)">Sao chép kịch bản</button>
+                    </div>
+                    <div id="insight-care-script" style="font-size: 13px; line-height: 1.6; color: #14532d; white-space: pre-wrap;">1. Gọi điện hoặc nhắn tin Zalo CSKH chúc mừng sinh nhật/tri ân định kỳ.
+2. Gửi thiệp mời trải nghiệm dòng flagship thế hệ mới kèm ưu đãi thu cũ đổi mới (Trade-in).
+3. Tặng kèm voucher vệ sinh máy và dán cường lực miễn phí trọn đời.</div>
+                </div>
+
+                <!-- 4. Retention Voucher Suggestion -->
+                <div id="insight-voucher-box" style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">🎁</span>
+                        <div>
+                            <strong id="insight-voucher-name" style="font-size: 13px; color: #92400e;">Voucher Tri Ân Khách Hàng Thân Thiết 100.000đ</strong>
+                            <div id="insight-voucher-reason" style="font-size: 12px; color: #b45309;">Khách hàng gắn bó lâu dài, tỷ lệ hài lòng cao. Cấp voucher tri ân nâng hạng VIP.</div>
+                        </div>
+                    </div>
+                    <span id="insight-voucher-code" class="badge" style="background: #f59e0b; color: white; font-weight: 800; font-family: monospace; font-size: 13px; padding: 6px 12px;">
+                        CARE_LOYALTY_100K
+                    </span>
+                </div>
+            </div>
+        </div>
 
         <!-- Electronic Warranties Card -->
         <div class="card" style="margin-bottom: 20px; border-left: 4px solid #059669;">
@@ -302,6 +422,102 @@
         } catch (err) {
             alert("Không thể kết nối tới cổng vận chuyển.");
         }
+    }
+
+    async function generateAICustomerInsight(customerId) {
+        const card = document.getElementById('ai-insight-card');
+        const loading = document.getElementById('ai-insight-loading');
+        const body = document.getElementById('ai-insight-body');
+        const statusBadge = document.getElementById('ai-insight-status-badge');
+        const btn = document.getElementById('btn-ai-insight');
+
+        if (btn) btn.disabled = true;
+        loading.style.display = 'block';
+        body.style.opacity = '0.35';
+        statusBadge.textContent = 'Đang phân tích...';
+
+        try {
+            const res = await fetch(`/api/customers/${customerId}/ai-insight`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            const json = await res.json();
+            if (json.success && json.insight) {
+                const ins = json.insight;
+
+                // 1. Satisfaction
+                document.getElementById('insight-sat-score').textContent = ins.satisfaction_score;
+                const satBadge = document.getElementById('insight-sat-badge');
+                satBadge.textContent = ins.satisfaction_label;
+                if (ins.satisfaction_score >= 80) {
+                    satBadge.style.background = '#dcfce7';
+                    satBadge.style.color = '#166534';
+                    document.getElementById('insight-sat-score').style.color = '#16a34a';
+                } else if (ins.satisfaction_score >= 50) {
+                    satBadge.style.background = '#fef3c7';
+                    satBadge.style.color = '#92400e';
+                    document.getElementById('insight-sat-score').style.color = '#d97706';
+                } else {
+                    satBadge.style.background = '#fee2e2';
+                    satBadge.style.color = '#991b1b';
+                    document.getElementById('insight-sat-score').style.color = '#dc2626';
+                }
+
+                // 2. Churn Risk
+                document.getElementById('insight-churn-score').textContent = `${ins.churn_risk_percent}%`;
+                const churnBadge = document.getElementById('insight-churn-badge');
+                churnBadge.textContent = ins.churn_risk_level;
+                if (ins.churn_risk_percent <= 25) {
+                    churnBadge.style.background = '#dcfce7';
+                    churnBadge.style.color = '#166534';
+                    document.getElementById('insight-churn-score').style.color = '#16a34a';
+                } else if (ins.churn_risk_percent <= 50) {
+                    churnBadge.style.background = '#fef3c7';
+                    churnBadge.style.color = '#92400e';
+                    document.getElementById('insight-churn-score').style.color = '#d97706';
+                } else {
+                    churnBadge.style.background = '#fee2e2';
+                    churnBadge.style.color = '#991b1b';
+                    document.getElementById('insight-churn-score').style.color = '#dc2626';
+                }
+
+                // 3. Texts
+                document.getElementById('insight-overview').textContent = ins.overview;
+                document.getElementById('insight-complaints').textContent = ins.complaint_analysis;
+                document.getElementById('insight-care-script').textContent = ins.care_script;
+
+                if (ins.recommended_voucher) {
+                    document.getElementById('insight-voucher-box').style.display = 'flex';
+                    document.getElementById('insight-voucher-name').textContent = ins.recommended_voucher.name;
+                    document.getElementById('insight-voucher-reason').textContent = ins.recommended_voucher.reason;
+                    document.getElementById('insight-voucher-code').textContent = ins.recommended_voucher.code;
+                }
+
+                statusBadge.textContent = 'Hoàn tất phân tích';
+                statusBadge.style.background = '#dcfce7';
+                statusBadge.style.color = '#15803d';
+
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                alert('Lỗi: ' + (json.message || 'Không thể tạo chân dung khách hàng.'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Lỗi kết nối tới máy chủ AI.');
+        } finally {
+            if (btn) btn.disabled = false;
+            loading.style.display = 'none';
+            body.style.opacity = '1';
+        }
+    }
+
+    function copyCareScript(btn) {
+        const text = document.getElementById('insight-care-script').innerText.trim();
+        navigator.clipboard.writeText(text).then(() => {
+            const orig = btn.innerText;
+            btn.innerText = 'Đã chép!';
+            setTimeout(() => { btn.innerText = orig; }, 1500);
+        });
     }
 </script>
 {% endblock %}

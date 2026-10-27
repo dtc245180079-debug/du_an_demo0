@@ -22,7 +22,7 @@ from database.db import (
     get_sales_orders, get_sales_order_by_id,
     get_warranties, get_sales_analytics
 )
-from services.ai_service import ai_service
+from services.ai_service import ai_service, sanitize_pii_for_ai
 from services.omnichannel_service import generate_webchat_token, verify_webchat_token, process_inbound_message
 from services.order_service import lookup_and_sync_customer_orders
 from services.logistics_service import refresh_tracking_status, handle_ghn_webhook
@@ -38,7 +38,10 @@ class TestCRMSystem(unittest.TestCase):
         """Kiểm tra tính tương thích 100% của tính năng FAQs sẵn có"""
         res = self.client.get("/")
         self.assertEqual(res.status_code, 200)
-        self.assertIn("HỆ THỐNG QUẢN LÝ DỮ LIỆU HỖ TRỢ KHÁCH HÀNG".encode("utf-8"), res.data)
+        self.assertTrue(
+            "KHO HƯỚNG DẪN XỬ LÝ & CƠ SỞ TRI THỨC KỸ THUẬT".encode("utf-8") in res.data or
+            "Kho Hướng Dẫn Xử Lý & FAQs".encode("utf-8") in res.data
+        )
         
         faqs = get_faqs()
         self.assertGreater(len(faqs), 0)
@@ -324,6 +327,47 @@ class TestCRMSystem(unittest.TestCase):
             self.assertIn("total_sales", analytics)
             self.assertIn("conversion_rate", analytics)
             self.assertIn("top_products", analytics)
+
+    def test_17_sanitize_pii_for_ai(self):
+        """[TIÊU CHÍ 3.4] Kiểm tra hàm tiền xử lý che giấu thông tin PII (SĐT, Email)"""
+        sample_text = "Khách hàng Lê Văn Hùng (SĐT: 0987654321, email: hung.le@gmail.com) cần hỗ trợ gấp"
+        sanitized = sanitize_pii_for_ai(sample_text)
+        self.assertNotIn("0987654321", sanitized)
+        self.assertNotIn("hung.le@gmail.com", sanitized)
+        self.assertIn("[SĐT_ĐÃ_ẨN]", sanitized)
+        self.assertIn("[EMAIL_ĐÃ_ẨN]", sanitized)
+
+    def test_18_compare_prompts_and_ab_testing(self):
+        """[TIÊU CHÍ 3.2] Kiểm tra so sánh 3 phiên bản Prompt (Zero-shot, Few-shot, Production)"""
+        with self.client:
+            self.client.post("/login", data={"username_or_email": "admin", "password": "admin123"})
+            res = self.client.post("/api/ai/compare-prompts", json={
+                "question": "Màn hình iPhone 15 bị sọc xanh có được bảo hành không?"
+            })
+            self.assertEqual(res.status_code, 200)
+            data = res.get_json()
+            self.assertTrue(data.get("success"))
+            results = data.get("data", {}).get("results", {})
+            self.assertIn("v1", results)
+            self.assertIn("v2", results)
+            self.assertIn("v3", results)
+            self.assertGreater(results["v1"]["latency_ms"], 0)
+            self.assertTrue("cao" in results["v1"]["hallucination_risk"].lower())
+            self.assertTrue("an toàn" in results["v3"]["hallucination_risk"].lower() or "thấp" in results["v3"]["hallucination_risk"].lower())
+
+    def test_19_ai_customer_insight(self):
+        """[TIÊU CHÍ 2.3] Kiểm tra tính năng AI Customer Insight tổng hợp chân dung khách hàng 360"""
+        with self.client:
+            self.client.post("/login", data={"username_or_email": "admin", "password": "admin123"})
+            res = self.client.post("/api/customers/1/ai-insight")
+            self.assertEqual(res.status_code, 200)
+            data = res.get_json()
+            self.assertTrue(data.get("success"))
+            ins = data.get("insight", {})
+            self.assertIn("satisfaction_score", ins)
+            self.assertIn("churn_risk_percent", ins)
+            self.assertIn("care_script", ins)
+            self.assertIn("overview", ins)
 
 if __name__ == "__main__":
     unittest.main()

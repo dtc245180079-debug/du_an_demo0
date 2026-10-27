@@ -1,0 +1,2 @@
+Trả lời câu hỏi của khách hàng về điện thoại:
+Câu hỏi: {question}
